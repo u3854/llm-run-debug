@@ -63,7 +63,7 @@ class LangSmithService:
                     else:
                         # Fallback for plain dictionary or already parsed shapes
                         messages.append(self._map_dict_to_schema(msg_data))
-                except Exception as ex:
+                except Exception as _ex:
                     # If loading fails, keep a fallback representation
                     messages.append(MessageSchema(
                         role="user",

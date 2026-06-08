@@ -90,26 +90,8 @@ class RunRunner:
 
     def _create_llm_instance(self, model_name: str, temperature: float):
         """Creates the appropriate LangChain Chat model instance based on model name."""
-        model_name_lower = model_name.lower()
-        
-        # Support Ollama for local debugging
-        if "ollama" in model_name_lower or any(k in model_name_lower for k in ["llama", "mistral", "gemma", "phi", "qwen"]):
-            try:
-                from langchain_ollama import ChatOllama
-                # Clean up ollama model name (e.g. remove "ollama/" prefix if user typed that)
-                clean_model = model_name.split("/")[-1] if "/" in model_name else model_name
-                return ChatOllama(model=clean_model, temperature=temperature)
-            except ImportError:
-                raise ImportError(
-                    "langchain-ollama is not installed or couldn't be loaded, but a local model was requested."
-                )
-        else:
-            # Default to ChatOpenAI
-            try:
-                from langchain_openai import ChatOpenAI
-                return ChatOpenAI(model=model_name, temperature=temperature)
-            except ImportError:
-                raise ImportError("langchain-openai is not installed or couldn't be loaded.")
+        from backend.app.services.llm_builder import build_single_llm
+        return build_single_llm(model=model_name, temperature=temperature)
 
     def _map_schema_to_langchain(self, msg: MessageSchema):
         """Converts MessageSchema into the corresponding LangChain message type."""

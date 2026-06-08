@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Run Debugger & Playground</title>
+    <!-- Google Fonts: Inter & Fira Code -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar: Run Selector and LangSmith Fetcher -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon"><i class="fa-solid fa-bug-slash"></i></span>
+                    <span class="logo-text">RunDebug<span class="gradient-text">.ai</span></span>
+                </div>
+            </div>
+
+            <!-- Fetch New Run Form -->
+            <div class="sidebar-section">
+                <h3>Fetch from LangSmith</h3>
+                <form id="fetch-run-form" class="fetch-form">
+                    <div class="input-group">
+                        <i class="fa-solid fa-key input-icon"></i>
+                        <input type="text" id="langsmith-run-id" placeholder="Enter Run ID..." required autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn-primary full-width" id="btn-fetch">
+                        <span class="btn-text"><i class="fa-solid fa-cloud-arrow-down"></i> Fetch & Parse</span>
+                        <span class="spinner hidden"></span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Saved Runs List -->
+            <div class="sidebar-section flex-grow">
+                <div class="section-header">
+                    <h3>Saved Run JSONs</h3>
+                    <button class="btn-icon" id="btn-refresh-list" title="Refresh list">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </div>
+                <div class="runs-list-container">
+                    <ul id="runs-list" class="runs-list">
+                        <!-- Dynamically populated runs list -->
+                        <div class="empty-state">No saved runs. Fetch a run from LangSmith to start.</div>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-workspace">
+            <header class="workspace-header">
+                <div class="run-info">
+                    <h2 id="active-run-title">Playground Sandbox</h2>
+                    <span class="badge badge-secondary" id="active-run-id">unsaved_playground</span>
+                </div>
+                <div class="actions">
+                    <button class="btn-secondary" id="btn-reset-playground">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                    <button class="btn-action" id="btn-run-simulation">
+                        <span class="btn-text"><i class="fa-solid fa-play"></i> Run Simulation</span>
+                        <span class="spinner hidden"></span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Editor Grid Layout -->
+            <div class="workspace-grid">
+                <!-- Left: Configuration, Messages, and Tools Editors -->
+                <div class="editor-pane">
+                    <!-- LLM Model Config Section -->
+                    <div class="card pane-section">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fa-solid fa-sliders"></i> Model Settings</span>
+                        </div>
+                        <div class="card-body grid-2-col">
+                            <div class="form-group">
+                                <label for="llm-model-name">Model Name</label>
+                                <div class="select-wrapper">
+                                    <input type="text" id="llm-model-name" list="recommended-models" value="gpt-4o-mini" placeholder="Select or type model...">
+                                    <datalist id="recommended-models">
+                                        <option value="gpt-4o-mini">
+                                        <option value="gpt-4o">
+                                        <option value="gpt-3.5-turbo">
+                                        <option value="llama3">
+                                        <option value="mistral">
+                                    </datalist>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="llm-temperature">
+                                    Temperature: <span id="temp-val" class="text-highlight">0.0</span>
+                                </label>
+                                <input type="range" id="llm-temperature" min="0" max="2" step="0.1" value="0.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Environment Variables Config Section -->
+                    <div class="card pane-section">
+                        <div class="card-header flex-space">
+                            <span class="card-title"><i class="fa-solid fa-key"></i> Environment Variables</span>
+                            <button class="btn-icon" id="btn-add-env" title="Add Environment Variable">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="env-container" class="env-container">
+                                <!-- Dynamically generated key-value rows -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Conversation Thread Editor -->
+                    <div class="card pane-section">
+                        <div class="card-header flex-space">
+                            <span class="card-title"><i class="fa-solid fa-message"></i> Messages / Prompts</span>
+                            <span class="badge badge-primary" id="message-count">0 messages</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="messages-container" class="messages-container">
+                                <!-- Dynamically populated message cards -->
+                            </div>
+                            <button class="btn-dashed full-width margin-top" id="btn-add-message">
+                                <i class="fa-solid fa-plus"></i> Add Message
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tools Definitions Editor -->
+                    <div class="card pane-section">
+                        <div class="card-header flex-space">
+                            <span class="card-title"><i class="fa-solid fa-toolbox"></i> Bound Tools (JSON Array)</span>
+                            <div class="tools-badges">
+                                <span class="badge badge-success" id="tools-status-badge">Valid JSON</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <textarea id="tools-json-editor" class="code-editor" placeholder="[ { 'type': 'function', ... } ]"></textarea>
+                            <div class="editor-footer">
+                                <span class="error-msg hidden" id="tools-json-error">Invalid JSON format</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Simulation Execution & Outputs -->
+                <div class="output-pane">
+                    <!-- Status & Diagnostics -->
+                    <div class="card pane-section">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fa-solid fa-chart-simple"></i> Diagnostics</span>
+                        </div>
+                        <div class="card-body metrics-grid">
+                            <div class="metric-card">
+                                <span class="metric-label">Status</span>
+                                <span class="metric-value status-idle" id="execution-status">IDLE</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Latency</span>
+                                <span class="metric-value text-indigo" id="metric-latency">-</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Total Tokens</span>
+                                <span class="metric-value text-green" id="metric-tokens-total">-</span>
+                            </div>
+                        </div>
+                        <div class="card-body token-breakdown hidden" id="token-breakdown-panel">
+                            <div class="token-row">
+                                <span>Prompt Tokens:</span>
+                                <span id="metric-tokens-prompt" class="font-medium">-</span>
+                            </div>
+                            <div class="token-row">
+                                <span>Completion Tokens:</span>
+                                <span id="metric-tokens-completion" class="font-medium">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model Response Text -->
+                    <div class="card pane-section flex-grow">
+                        <div class="card-header">
+                            <span class="card-title"><i class="fa-solid fa-reply"></i> Assistant Response</span>
+                        </div>
+                        <div class="card-body overflow-y flex-col">
+                            <div id="simulation-output-container" class="output-container empty-output">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-terminal large-icon"></i>
+                                    <p>Run the simulation to inspect the assistant response.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tool Calls Triggered -->
+                    <div class="card pane-section">
+                        <div class="card-header flex-space">
+                            <span class="card-title"><i class="fa-solid fa-code-fork"></i> Tool Calls Emitted</span>
+                            <span class="badge badge-accent" id="tool-calls-count">0 calls</span>
+                        </div>
+                        <div class="card-body overflow-y max-height-300">
+                            <div id="tool-calls-container" class="tool-calls-container">
+                                <div class="empty-state">No tool calls generated.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Expanded Editor Modal -->
+    <div id="editor-modal" class="modal hidden">
+        <div class="modal-overlay" id="modal-overlay"></div>
+        <div class="modal-content card">
+            <div class="card-header flex-space">
+                <span class="card-title" id="modal-editor-title"><i class="fa-solid fa-expand"></i> Message Editor</span>
+                <div class="modal-actions">
+                    <span class="badge badge-primary" id="modal-msg-role">human</span>
+                    <button class="btn-icon text-muted" id="btn-close-modal" title="Close modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body flex-col">
+                <textarea id="modal-textarea" class="code-editor modal-textarea" placeholder="Type message/prompt content here..."></textarea>
+                <div class="modal-footer margin-top flex-space">
+                    <span class="text-light" id="modal-char-count">0 characters</span>
+                    <button class="btn-primary" id="btn-save-modal">Save & Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Script Entrypoint -->
+    <script src="js/app.js"></script>
+</body>
+</html>

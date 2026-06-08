@@ -1,0 +1,14 @@
+[project]
+name = "llm-run-debug"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "langchain-ollama>=1.1.0",
+    "langchain-openai>=1.2.2",
+    "langsmith>=0.8.9",
+    "python-dotenv>=1.2.2",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+]

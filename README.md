@@ -2,43 +2,6 @@
 
 A developer tool designed to download runs from LangSmith, store them in a clean JSON format, and recreate/modify/replay the runs in a visual playground.
 
-## Project Structure
-
-```
-llm-run-debug/
-├── data/
-│   └── runs/                     # JSON serialized runs from LangSmith
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py               # FastAPI application and entrypoint
-│   │   ├── core/
-│   │   │   ├── __init__.py
-│   │   │   └── config.py         # Configuration settings & paths
-│   │   ├── api/
-│   │   │   ├── __init__.py
-│   │   │   ├── router.py         # App base API router
-│   │   │   └── endpoints/
-│   │   │       ├── __init__.py
-│   │   │       └── runs.py       # Endpoints for runs fetch & test
-│   │   ├── schemas/
-│   │   │   ├── __init__.py
-│   │   │   └── runs.py           # Pydantic data schemas
-│   │   └── services/
-│   │       ├── __init__.py
-│   │       ├── langsmith_service.py # Interacts with LangSmith API
-│   │       └── run_runner.py     # Recreates LLM calls & binds tools
-├── frontend/                     # Dashboard Single-Page App (SPA)
-│   ├── index.html                # UI layout and containers
-│   ├── css/
-│   │   └── styles.css            # Custom properties, dark theme styling
-│   └── js/
-│       └── app.js                # State management and API integrations
-├── main.py                       # CLI Wrapper
-├── pyproject.toml                # Dependencies configuration
-└── README.md                     # Documentation
-```
-
 ## Setup Instructions
 
 ### 1. Prerequisites
@@ -49,7 +12,7 @@ Create a `.env` file in the root directory and add your API keys:
 ```env
 LANGCHAIN_API_KEY=your_langsmith_api_key
 OPENAI_API_KEY=your_openai_api_key
-# Optional: LANGCHAIN_TRACING_V2=true
+...
 ```
 
 ### 3. Install Dependencies

@@ -57,7 +57,76 @@ export const DOM = {
     modalMsgRole: document.getElementById("modal-msg-role"),
     modalCharCount: document.getElementById("modal-char-count"),
     btnSaveModal: document.getElementById("btn-save-modal"),
-    btnCloseModal: document.getElementById("btn-close-modal")
+    btnCloseModal: document.getElementById("btn-close-modal"),
+    
+    // View Tab elements
+    tabPlayground: document.getElementById("tab-playground"),
+    tabDeltas: document.getElementById("tab-deltas"),
+    playgroundView: document.getElementById("playground-view"),
+    deltasView: document.getElementById("deltas-view"),
+    
+    // Delta Management Elements
+    createDeltaForm: document.getElementById("create-delta-form"),
+    deltaName: document.getElementById("delta-name"),
+    deltaComponent: document.getElementById("delta-component"),
+    deltaOperation: document.getElementById("delta-operation"),
+    deltaRole: document.getElementById("delta-role"),
+    deltaIndex: document.getElementById("delta-index"),
+    deltaAnchor: document.getElementById("delta-anchor"),
+    deltaValue: document.getElementById("delta-value"),
+    deltaStrict: document.getElementById("delta-strict"),
+    deltasList: document.getElementById("deltas-list"),
+    btnRefreshDeltas: document.getElementById("btn-refresh-deltas"),
+    deltaMessageOptions: document.getElementById("delta-message-options"),
+    deltaAnchorGroup: document.getElementById("delta-anchor-group"),
+    deltaValueLabel: document.getElementById("delta-value-label"),
+    
+    // Delta Replay Elements
+    deltaEmptyState: document.getElementById("delta-empty-state"),
+    deltaActivePanel: document.getElementById("delta-active-panel"),
+    selectedDeltaName: document.getElementById("selected-delta-name"),
+    selectedDeltaDetails: document.getElementById("selected-delta-details"),
+    trialBatchSize: document.getElementById("trial-batch-size"),
+    btnExecuteTrials: document.getElementById("btn-execute-trials"),
+    deltaRunsChecklist: document.getElementById("delta-runs-checklist"),
+    btnSelectAllReplay: document.getElementById("btn-select-all-replay"),
+    
+    // Aggregated Metrics
+    metricTrialSuccess: document.getElementById("metric-trial-success"),
+    metricTrialLatency: document.getElementById("metric-trial-latency"),
+    metricTrialTokens: document.getElementById("metric-trial-tokens"),
+    
+    // Trials Logs
+    trialsListTbody: document.getElementById("trials-list-tbody"),
+    btnRefreshTrials: document.getElementById("btn-refresh-trials"),
+    btnClearTrials: document.getElementById("btn-clear-trials"),
+    
+    // Comparison Modal Elements
+    comparisonModal: document.getElementById("comparison-modal"),
+    modalOverlayComparison: document.getElementById("modal-overlay-comparison"),
+    modalComparisonTitle: document.getElementById("modal-comparison-title"),
+    btnCloseComparison: document.getElementById("btn-close-comparison"),
+    modalTabOutput: document.getElementById("modal-tab-output"),
+    modalTabDiff: document.getElementById("modal-tab-diff"),
+    modalContentOutput: document.getElementById("modal-content-output"),
+    modalContentDiff: document.getElementById("modal-content-diff"),
+    baselineOutputText: document.getElementById("baseline-output-text"),
+    patchedOutputText: document.getElementById("patched-output-text"),
+    trialStatsRow: document.getElementById("trial-stats-row"),
+    diffParamsSummary: document.getElementById("diff-params-summary"),
+    diffMessagesContainer: document.getElementById("diff-messages-container"),
+    modalBatchSelectorRow: document.getElementById("modal-batch-selector-row"),
+    modalBatchButtonsContainer: document.getElementById("modal-batch-buttons-container"),
+    
+    // Infer Delta Elements
+    btnInferDelta: document.getElementById("btn-infer-delta"),
+    inferDeltaModal: document.getElementById("infer-delta-modal"),
+    modalOverlayInfer: document.getElementById("modal-overlay-infer"),
+    btnCloseInfer: document.getElementById("btn-close-infer"),
+    btnCancelInfer: document.getElementById("btn-cancel-infer"),
+    btnSaveInferred: document.getElementById("btn-save-inferred"),
+    inferDeltaName: document.getElementById("infer-delta-name"),
+    inferredChangesList: document.getElementById("inferred-changes-list")
 };
 
 // ==========================================================================
@@ -128,7 +197,16 @@ export function openModal(index) {
 export function saveModalContent() {
     if (state.activeModalMsgIndex !== null) {
         state.messages[state.activeModalMsgIndex].content = DOM.modalTextarea.value;
+        const msg = state.messages[state.activeModalMsgIndex];
         renderMessages();
+
+        // If it's a system prompt and we have a loaded run config, automatically trigger delta inference
+        if (msg && msg.role === "system" && state.activeRunId) {
+            setTimeout(async () => {
+                const { openInferDeltaModal } = await import('./deltas.js');
+                openInferDeltaModal();
+            }, 150);
+        }
     }
     closeModal();
 }
@@ -136,4 +214,20 @@ export function saveModalContent() {
 export function closeModal() {
     DOM.editorModal.classList.add("hidden");
     state.activeModalMsgIndex = null;
+}
+
+export function openComparisonModal() {
+    DOM.comparisonModal.classList.remove("hidden");
+}
+
+export function closeComparisonModal() {
+    DOM.comparisonModal.classList.add("hidden");
+}
+
+export function openInferModal() {
+    DOM.inferDeltaModal.classList.remove("hidden");
+}
+
+export function closeInferModal() {
+    DOM.inferDeltaModal.classList.add("hidden");
 }

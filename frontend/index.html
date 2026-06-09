@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="css/styles.css">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jsdiff for prompt differences -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.2.0/diff.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -81,6 +83,9 @@
                     <span class="badge badge-secondary" id="active-run-id">unsaved_playground</span>
                 </div>
                 <div class="actions">
+                    <button class="btn-secondary" id="btn-infer-delta" disabled title="Infer strict prompt delta from playground changes">
+                        <i class="fa-solid fa-magic"></i> Infer Delta
+                    </button>
                     <button class="btn-secondary" id="btn-reset-playground">
                         <i class="fa-solid fa-rotate-left"></i> Reset
                     </button>
@@ -91,143 +96,340 @@
                 </div>
             </header>
 
-            <!-- Editor Grid Layout -->
-            <div class="workspace-grid">
-                <!-- Left: Configuration, Messages, and Tools Editors -->
-                <div class="editor-pane">
-                    <!-- LLM Model Config Section -->
-                    <div class="card pane-section">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-sliders"></i> Model Settings</span>
-                        </div>
-                        <div class="card-body grid-2-col">
-                            <div class="form-group">
-                                <label for="llm-model-name">Model Name</label>
-                                <div class="select-wrapper">
-                                    <input type="text" id="llm-model-name" list="recommended-models" value="gpt-4o-mini" placeholder="Select or type model...">
-                                    <datalist id="recommended-models">
-                                        <option value="gpt-4o-mini">
-                                        <option value="gpt-4o">
-                                        <option value="gpt-3.5-turbo">
-                                        <option value="llama3">
-                                        <option value="mistral">
-                                    </datalist>
+            <!-- Mode Switch Tabs -->
+            <div class="workspace-tabs">
+                <button class="tab-button active" id="tab-playground">
+                    <i class="fa-solid fa-flask"></i> Sandbox Playground
+                </button>
+                <button class="tab-button" id="tab-deltas">
+                    <i class="fa-solid fa-code-branch"></i> Strict Delta Replay
+                </button>
+            </div>
+
+            <!-- Playground Sandbox View Container -->
+            <div id="playground-view" class="tab-content">
+                <!-- Editor Grid Layout -->
+                <div class="workspace-grid">
+                    <!-- Left: Configuration, Messages, and Tools Editors -->
+                    <div class="editor-pane">
+                        <!-- LLM Model Config Section -->
+                        <div class="card pane-section">
+                            <div class="card-header">
+                                <span class="card-title"><i class="fa-solid fa-sliders"></i> Model Settings</span>
+                            </div>
+                            <div class="card-body grid-2-col">
+                                <div class="form-group">
+                                    <label for="llm-model-name">Model Name</label>
+                                    <div class="select-wrapper">
+                                        <input type="text" id="llm-model-name" list="recommended-models" value="gpt-4o-mini" placeholder="Select or type model...">
+                                        <datalist id="recommended-models">
+                                            <option value="gpt-4o-mini">
+                                            <option value="gpt-4o">
+                                            <option value="gpt-3.5-turbo">
+                                            <option value="llama3">
+                                            <option value="mistral">
+                                        </datalist>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="llm-temperature">
+                                        Temperature: <span id="temp-val" class="text-highlight">0.0</span>
+                                    </label>
+                                    <input type="range" id="llm-temperature" min="0" max="2" step="0.1" value="0.0">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label for="llm-temperature">
-                                    Temperature: <span id="temp-val" class="text-highlight">0.0</span>
-                                </label>
-                                <input type="range" id="llm-temperature" min="0" max="2" step="0.1" value="0.0">
+                        </div>
+
+                        <!-- Environment Variables Config Section -->
+                        <div class="card pane-section">
+                            <div class="card-header flex-space">
+                                <span class="card-title"><i class="fa-solid fa-key"></i> Environment Variables</span>
+                                <button class="btn-icon" id="btn-add-env" title="Add Environment Variable">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="env-container" class="env-container">
+                                    <!-- Dynamically generated key-value rows -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Conversation Thread Editor -->
+                        <div class="card pane-section">
+                            <div class="card-header flex-space">
+                                <span class="card-title"><i class="fa-solid fa-message"></i> Messages / Prompts</span>
+                                <span class="badge badge-primary" id="message-count">0 messages</span>
+                            </div>
+                            <div class="card-body">
+                                <div id="messages-container" class="messages-container">
+                                    <!-- Dynamically populated message cards -->
+                                </div>
+                                <button class="btn-dashed full-width margin-top" id="btn-add-message">
+                                    <i class="fa-solid fa-plus"></i> Add Message
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tools Definitions Editor -->
+                        <div class="card pane-section">
+                            <div class="card-header flex-space">
+                                <span class="card-title"><i class="fa-solid fa-toolbox"></i> Bound Tools (JSON Array)</span>
+                                <div class="tools-badges">
+                                    <span class="badge badge-success" id="tools-status-badge">Valid JSON</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <textarea id="tools-json-editor" class="code-editor" placeholder="[ { 'type': 'function', ... } ]"></textarea>
+                                <div class="editor-footer">
+                                    <span class="error-msg hidden" id="tools-json-error">Invalid JSON format</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Environment Variables Config Section -->
-                    <div class="card pane-section">
-                        <div class="card-header flex-space">
-                            <span class="card-title"><i class="fa-solid fa-key"></i> Environment Variables</span>
-                            <button class="btn-icon" id="btn-add-env" title="Add Environment Variable">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
-                        </div>
-                        <div class="card-body">
-                            <div id="env-container" class="env-container">
-                                <!-- Dynamically generated key-value rows -->
+                    <!-- Right: Simulation Execution & Outputs -->
+                    <div class="output-pane">
+                        <!-- Status & Diagnostics -->
+                        <div class="card pane-section">
+                            <div class="card-body metrics-grid">
+                                <div class="metric-card">
+                                    <span class="metric-label">Status</span>
+                                    <span class="metric-value status-idle" id="execution-status">IDLE</span>
+                                </div>
+                                <div class="metric-card">
+                                    <span class="metric-label">Latency</span>
+                                    <span class="metric-value text-indigo" id="metric-latency">-</span>
+                                </div>
+                                <div class="metric-card">
+                                    <span class="metric-label">Total Tokens</span>
+                                    <span class="metric-value text-green" id="metric-tokens-total">-</span>
+                                </div>
+                            </div>
+                            <div class="card-body token-breakdown hidden" id="token-breakdown-panel">
+                                <div class="token-row">
+                                    <span>Prompt Tokens:</span>
+                                    <span id="metric-tokens-prompt" class="font-medium">-</span>
+                                </div>
+                                <div class="token-row">
+                                    <span>Completion Tokens:</span>
+                                    <span id="metric-tokens-completion" class="font-medium">-</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Conversation Thread Editor -->
-                    <div class="card pane-section">
-                        <div class="card-header flex-space">
-                            <span class="card-title"><i class="fa-solid fa-message"></i> Messages / Prompts</span>
-                            <span class="badge badge-primary" id="message-count">0 messages</span>
-                        </div>
-                        <div class="card-body">
-                            <div id="messages-container" class="messages-container">
-                                <!-- Dynamically populated message cards -->
+                        <!-- Model Response Text -->
+                        <div class="card pane-section flex-grow">
+                            <div class="card-header">
+                                <span class="card-title"><i class="fa-solid fa-reply"></i> Assistant Response</span>
                             </div>
-                            <button class="btn-dashed full-width margin-top" id="btn-add-message">
-                                <i class="fa-solid fa-plus"></i> Add Message
-                            </button>
+                            <div class="card-body overflow-y flex-col">
+                                <div id="simulation-output-container" class="output-container empty-output">
+                                    <div class="empty-state">
+                                        <i class="fa-solid fa-terminal large-icon"></i>
+                                        <p>Run the simulation to inspect the assistant response.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Tools Definitions Editor -->
-                    <div class="card pane-section">
-                        <div class="card-header flex-space">
-                            <span class="card-title"><i class="fa-solid fa-toolbox"></i> Bound Tools (JSON Array)</span>
-                            <div class="tools-badges">
-                                <span class="badge badge-success" id="tools-status-badge">Valid JSON</span>
+                        <!-- Tool Calls Triggered -->
+                        <div class="card pane-section">
+                            <div class="card-header flex-space">
+                                <span class="card-title"><i class="fa-solid fa-code-fork"></i> Tool Calls Emitted</span>
+                                <span class="badge badge-accent" id="tool-calls-count">0 calls</span>
                             </div>
-                        </div>
-                        <div class="card-body">
-                            <textarea id="tools-json-editor" class="code-editor" placeholder="[ { 'type': 'function', ... } ]"></textarea>
-                            <div class="editor-footer">
-                                <span class="error-msg hidden" id="tools-json-error">Invalid JSON format</span>
+                            <div class="card-body overflow-y max-height-300">
+                                <div id="tool-calls-container" class="tool-calls-container">
+                                    <div class="empty-state">No tool calls generated.</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Right: Simulation Execution & Outputs -->
-                <div class="output-pane">
-                    <!-- Status & Diagnostics -->
-                    <div class="card pane-section">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-chart-simple"></i> Diagnostics</span>
+            <!-- Delta Replay View Container -->
+            <div id="deltas-view" class="tab-content hidden">
+                <div class="deltas-grid">
+                    <!-- Left: Delta Configuration & Saved Deltas -->
+                    <div class="delta-left-pane">
+                        <div class="card pane-section">
+                            <div class="card-header">
+                                <span class="card-title"><i class="fa-solid fa-plus-circle"></i> Create Strict Delta</span>
+                            </div>
+                            <div class="card-body">
+                                <form id="create-delta-form" class="delta-form">
+                                    <div class="form-group">
+                                        <label for="delta-name">Delta Name</label>
+                                        <input type="text" id="delta-name" placeholder="e.g., Append safety instruction to system prompt" required autocomplete="off">
+                                    </div>
+                                    <div class="grid-2-col">
+                                        <div class="form-group">
+                                            <label for="delta-component">Target Component</label>
+                                            <select id="delta-component" required>
+                                                <option value="message">Message</option>
+                                                <option value="temperature">Temperature</option>
+                                                <option value="model_name">Model Name</option>
+                                                <option value="tools">Tools</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="delta-operation">Operation</label>
+                                            <select id="delta-operation" required>
+                                                <option value="replace">Replace</option>
+                                                <option value="append">Append</option>
+                                                <option value="prepend">Prepend</option>
+                                                <option value="insert_before">Insert Before</option>
+                                                <option value="insert_after">Insert After</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="grid-2-col" id="delta-message-options">
+                                        <div class="form-group">
+                                            <label for="delta-role">Message Role</label>
+                                            <select id="delta-role">
+                                                <option value="system">System</option>
+                                                <option value="human">Human / User</option>
+                                                <option value="ai">AI / Assistant</option>
+                                                <option value="tool">Tool Response</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="delta-index">Message Index</label>
+                                            <input type="number" id="delta-index" placeholder="e.g. 0 for first, -1 for last">
+                                        </div>
+                                    </div>
+                                    <div class="form-group" id="delta-anchor-group">
+                                        <label for="delta-anchor">Anchor Text (Case-sensitive exact match)</label>
+                                        <input type="text" id="delta-anchor" placeholder="Enter target text block to match...">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="delta-value" id="delta-value-label">Value</label>
+                                        <textarea id="delta-value" class="code-editor" style="height: 100px;" placeholder="Text content, float, or JSON tools array..." required></textarea>
+                                    </div>
+                                    <div class="form-group checkbox-row">
+                                        <input type="checkbox" id="delta-strict" checked>
+                                        <label for="delta-strict">Strict matching (fail on ambiguity)</label>
+                                    </div>
+                                    <button type="submit" class="btn-primary full-width" id="btn-save-delta">
+                                        <i class="fa-solid fa-floppy-disk"></i> Save Delta
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                        <div class="card-body metrics-grid">
-                            <div class="metric-card">
-                                <span class="metric-label">Status</span>
-                                <span class="metric-value status-idle" id="execution-status">IDLE</span>
-                            </div>
-                            <div class="metric-card">
-                                <span class="metric-label">Latency</span>
-                                <span class="metric-value text-indigo" id="metric-latency">-</span>
-                            </div>
-                            <div class="metric-card">
-                                <span class="metric-label">Total Tokens</span>
-                                <span class="metric-value text-green" id="metric-tokens-total">-</span>
-                            </div>
-                        </div>
-                        <div class="card-body token-breakdown hidden" id="token-breakdown-panel">
-                            <div class="token-row">
-                                <span>Prompt Tokens:</span>
-                                <span id="metric-tokens-prompt" class="font-medium">-</span>
-                            </div>
-                            <div class="token-row">
-                                <span>Completion Tokens:</span>
-                                <span id="metric-tokens-completion" class="font-medium">-</span>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Model Response Text -->
-                    <div class="card pane-section flex-grow">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-reply"></i> Assistant Response</span>
-                        </div>
-                        <div class="card-body overflow-y flex-col">
-                            <div id="simulation-output-container" class="output-container empty-output">
-                                <div class="empty-state">
-                                    <i class="fa-solid fa-terminal large-icon"></i>
-                                    <p>Run the simulation to inspect the assistant response.</p>
+                        <div class="card pane-section">
+                            <div class="card-header flex-space">
+                                <span class="card-title"><i class="fa-solid fa-tags"></i> Saved Deltas</span>
+                                <button class="btn-icon" id="btn-refresh-deltas" title="Refresh Deltas"><i class="fa-solid fa-arrows-rotate"></i></button>
+                            </div>
+                            <div class="card-body overflow-y">
+                                <div class="deltas-list-container">
+                                    <ul id="deltas-list" class="deltas-list">
+                                        <!-- Dynamically populated -->
+                                    </ul>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tool Calls Triggered -->
-                    <div class="card pane-section">
-                        <div class="card-header flex-space">
-                            <span class="card-title"><i class="fa-solid fa-code-fork"></i> Tool Calls Emitted</span>
-                            <span class="badge badge-accent" id="tool-calls-count">0 calls</span>
+                    <!-- Right: Execution and Analytics -->
+                    <div class="delta-right-pane">
+                        <div id="delta-empty-state" class="empty-state-card card">
+                            <div class="card-body flex-col flex-center">
+                                <i class="fa-solid fa-vial-circle-check large-icon text-muted" style="font-size: 48px; margin-bottom: 16px;"></i>
+                                <h3>No Delta Selected</h3>
+                                <p class="text-light">Select a delta from the saved list to run trials and view evaluation results.</p>
+                            </div>
                         </div>
-                        <div class="card-body overflow-y max-height-300">
-                            <div id="tool-calls-container" class="tool-calls-container">
-                                <div class="empty-state">No tool calls generated.</div>
+
+                        <div id="delta-active-panel" class="hidden flex-col gap-16">
+                            <!-- Selected Delta Header & Run triggers -->
+                            <div class="card pane-section">
+                                <div class="card-header flex-space align-start">
+                                    <div>
+                                        <h3 id="selected-delta-name" class="margin-0 text-indigo font-bold">Delta Name</h3>
+                                        <div id="selected-delta-details" class="text-light margin-top-4" style="font-size:12px;"></div>
+                                    </div>
+                                    <div class="replay-actions">
+                                        <div class="batch-selector">
+                                            <label for="trial-batch-size">Batch Size:</label>
+                                            <select id="trial-batch-size" class="batch-select">
+                                                <option value="1">1 Run</option>
+                                                <option value="3" selected>3 Runs (Avg)</option>
+                                                <option value="5">5 Runs (Avg)</option>
+                                            </select>
+                                        </div>
+                                        <button class="btn-action" id="btn-execute-trials">
+                                            <span class="btn-text"><i class="fa-solid fa-play"></i> Run Bulk Trials</span>
+                                            <span class="spinner hidden"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="delta-run-selector-panel">
+                                        <div class="flex-space margin-bottom-8">
+                                            <span class="font-medium text-indigo">Select Runs to replay against:</span>
+                                            <span class="text-link pointer" id="btn-select-all-replay">Select All</span>
+                                        </div>
+                                        <div id="delta-runs-checklist" class="runs-checklist">
+                                            <!-- Dynamically populated runs checkboxes -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Aggregated Metrics Card -->
+                            <div class="card pane-section" id="trial-metrics-card">
+                                <div class="card-header">
+                                    <span class="card-title"><i class="fa-solid fa-chart-line"></i> Aggregated Replay Metrics</span>
+                                </div>
+                                <div class="card-body metrics-grid">
+                                    <div class="metric-card">
+                                        <span class="metric-label">Applied / Executed</span>
+                                        <span class="metric-value text-indigo" id="metric-trial-success">-</span>
+                                    </div>
+                                    <div class="metric-card">
+                                        <span class="metric-label">Avg Latency Shift</span>
+                                        <span class="metric-value" id="metric-trial-latency">-</span>
+                                    </div>
+                                    <div class="metric-card">
+                                        <span class="metric-label">Avg Token Shift</span>
+                                        <span class="metric-value" id="metric-trial-tokens">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Individual Trial Results List -->
+                            <div class="card pane-section">
+                                <div class="card-header flex-space">
+                                    <span class="card-title"><i class="fa-solid fa-list-check"></i> Trial Results Log</span>
+                                    <div class="flex-row gap-8">
+                                        <button class="btn-secondary btn-small" id="btn-clear-trials" title="Clear Trials for this Delta">
+                                            <i class="fa-solid fa-eraser"></i> Clear Trials
+                                        </button>
+                                        <button class="btn-icon" id="btn-refresh-trials" title="Refresh Trials"><i class="fa-solid fa-arrows-rotate"></i></button>
+                                    </div>
+                                </div>
+                                <div class="card-body overflow-y max-height-300">
+                                    <div class="trials-table-container">
+                                        <table class="trials-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Run ID</th>
+                                                    <th>Status</th>
+                                                    <th>Latency Delta</th>
+                                                    <th>Token Delta</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="trials-list-tbody">
+                                                <!-- Dynamically populated -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -254,6 +456,100 @@
                 <div class="modal-footer margin-top flex-space">
                     <span class="text-light" id="modal-char-count">0 characters</span>
                     <button class="btn-primary" id="btn-save-modal">Save & Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison & Diff Modal -->
+    <div id="comparison-modal" class="modal hidden">
+        <div class="modal-overlay" id="modal-overlay-comparison"></div>
+        <div class="modal-content card max-width-1000">
+            <div class="card-header flex-space">
+                <span class="card-title" id="modal-comparison-title"><i class="fa-solid fa-vial"></i> Trial Evaluation</span>
+                <div class="modal-actions">
+                    <button class="btn-icon text-muted" id="btn-close-comparison" title="Close modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-tabs">
+                <button class="modal-tab active" id="modal-tab-output">Output Comparison</button>
+                <button class="modal-tab" id="modal-tab-diff">Prompt Payload Diff</button>
+            </div>
+            
+            <!-- Output Comparison Tab Content -->
+            <div class="modal-tab-content active-content" id="modal-content-output">
+                <!-- Batch selector inside output comparison -->
+                <div class="batch-run-selector-row hidden" id="modal-batch-selector-row">
+                    <span class="font-medium text-indigo">Batch Runs:</span>
+                    <div class="flex-row gap-4" id="modal-batch-buttons-container">
+                        <!-- Dynamically generated buttons: Run 1, Run 2, Run 3 -->
+                    </div>
+                </div>
+                
+                <div class="comparison-side-by-side">
+                    <div class="comparison-column">
+                        <h4 class="comparison-col-header"><i class="fa-solid fa-history"></i> Baseline LLM Response</h4>
+                        <div class="comparison-box baseline-box" id="baseline-output-text">
+                            <!-- Baseline text -->
+                        </div>
+                    </div>
+                    <div class="comparison-column">
+                        <h4 class="comparison-col-header"><i class="fa-solid fa-wand-magic-sparkles"></i> Patched LLM Response (Trial)</h4>
+                        <div class="comparison-box patched-box" id="patched-output-text">
+                            <!-- Patched text -->
+                        </div>
+                    </div>
+                </div>
+                <div class="comparison-stats-row" id="trial-stats-row">
+                    <!-- Metrics differences like Latency and Tokens -->
+                </div>
+            </div>
+            
+            <!-- Prompt Payload Diff Tab Content -->
+            <div class="modal-tab-content" id="modal-content-diff">
+                <div class="diff-params-section" id="diff-params-summary">
+                    <!-- Diff of model name, temperature, etc. -->
+                </div>
+                <div class="diff-messages-section">
+                    <h4 class="diff-section-title"><i class="fa-solid fa-message"></i> Message Prompt Differences</h4>
+                    <div id="diff-messages-container" class="diff-messages-container">
+                        <!-- Message level differences -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Infer Delta Modal -->
+    <div id="infer-delta-modal" class="modal hidden">
+        <div class="modal-overlay" id="modal-overlay-infer"></div>
+        <div class="modal-content card max-width-600" style="width: 90%;">
+            <div class="card-header flex-space">
+                <span class="card-title"><i class="fa-solid fa-magic"></i> Infer Delta from Playground Changes</span>
+                <div class="modal-actions">
+                    <button class="btn-icon text-muted" id="btn-close-infer" title="Close modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body flex-col gap-16">
+                <div class="form-group">
+                    <label for="infer-delta-name">Delta Name</label>
+                    <input type="text" id="infer-delta-name" placeholder="e.g. Append safety warning to system prompt" required autocomplete="off">
+                </div>
+                
+                <div class="inferred-changes-list-container">
+                    <label class="font-medium text-indigo" style="text-transform:none; font-size:12px;">Select the change to save as a Delta:</label>
+                    <div id="inferred-changes-list" class="inferred-changes-list" style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+                        <!-- Dynamically populated candidate radios -->
+                    </div>
+                </div>
+                
+                <div class="modal-footer margin-top flex-space" style="justify-content: flex-end; gap:12px; margin-top:16px;">
+                    <button type="button" class="btn-secondary" id="btn-cancel-infer">Cancel</button>
+                    <button type="button" class="btn-primary" id="btn-save-inferred">Save Delta</button>
                 </div>
             </div>
         </div>

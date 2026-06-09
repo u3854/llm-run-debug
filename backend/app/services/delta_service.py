@@ -44,8 +44,33 @@ class DeltaService:
             return self._map_to_schema(r)
         finally:
             db.close()
+
+    def delete_delta(self, delta_id: str) -> None:
+        db = SessionLocal()
+        try:
+            r = db.query(DeltaRecord).filter(DeltaRecord.delta_id == delta_id).first()
+            if not r:
+                raise FileNotFoundError(f"Delta {delta_id} not found")
+            
+            # Cascade delete trials associated with this delta
+            from backend.app.core.domain import TrialRecord
+            db.query(TrialRecord).filter(TrialRecord.delta_id == delta_id).delete()
+            
+            db.delete(r)
+            db.commit()
+        finally:
+            db.close()
             
     def _map_to_schema(self, record: DeltaRecord) -> DeltaSchema:
         data = {c.name: getattr(record, c.name) for c in record.__table__.columns}
-        data["created_at"] = record.created_at.isoformat() if record.created_at else None
+        created_at = record.created_at
+        if created_at:
+            if isinstance(created_at, str):
+                data["created_at"] = created_at
+            elif hasattr(created_at, "isoformat"):
+                data["created_at"] = created_at.isoformat()
+            else:
+                data["created_at"] = str(created_at)
+        else:
+            data["created_at"] = None
         return DeltaSchema(**data)

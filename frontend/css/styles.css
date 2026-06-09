@@ -1078,3 +1078,570 @@ button {
 }
 
 
+
+/* ==========================================================================
+   Tabbed Navigation & Layout View Modes
+   ========================================================================== */
+.workspace-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 10px 24px;
+    background-color: rgba(6, 9, 15, 0.3);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tab-button {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 20px;
+    transition: all var(--transition-fast);
+}
+.tab-button:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+.tab-button.active {
+    color: white;
+    background-color: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.1);
+}
+
+.tab-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   Deltas View Layout
+   ========================================================================== */
+.deltas-grid {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.delta-left-pane {
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.delta-right-pane {
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background-color: rgba(6, 9, 15, 0.4);
+}
+
+.delta-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.checkbox-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.checkbox-row input {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+/* Saved Deltas list */
+.deltas-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.delta-item {
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+.delta-item:hover {
+    border-color: var(--accent-indigo);
+    background-color: var(--bg-input-focus);
+}
+.delta-item.active {
+    border-color: var(--accent-indigo);
+    background-color: rgba(99, 102, 241, 0.1);
+    box-shadow: inset 3px 0 0 var(--accent-indigo);
+}
+
+.delta-item-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.delta-item-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.delta-item-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.delta-item-value-preview {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: rgba(0, 0, 0, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+.btn-delete-delta {
+    opacity: 0.5;
+    padding: 4px;
+    font-size: 11px;
+}
+.btn-delete-delta:hover {
+    opacity: 1;
+    color: var(--color-danger) !important;
+    background-color: rgba(239, 68, 68, 0.15);
+}
+.delta-item:hover .btn-delete-delta {
+    opacity: 0.8;
+}
+
+/* Run checklist panel */
+.runs-checklist {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.runs-checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    transition: background-color var(--transition-fast);
+}
+.runs-checklist-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+.runs-checklist-item input {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+.runs-checklist-label {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    cursor: pointer;
+}
+.runs-checklist-model {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.replay-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.batch-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.batch-select {
+    padding: 4px 8px;
+    font-size: 12px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    width: auto;
+}
+
+/* Trials table */
+.trials-table-container {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.trials-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    text-align: left;
+}
+
+.trials-table th,
+.trials-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.trials-table th {
+    background-color: rgba(255, 255, 255, 0.02);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.trials-table tbody tr {
+    transition: background-color var(--transition-fast);
+}
+.trials-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.trials-table td.font-mono {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+}
+
+.trial-metric-shift {
+    font-size: 11px;
+    margin-left: 6px;
+}
+.trial-metric-shift.positive { color: var(--color-danger); }
+.trial-metric-shift.negative { color: var(--color-ai); }
+.trial-metric-shift.neutral { color: var(--text-muted); }
+
+/* ==========================================================================
+   Comparison Modal Side-by-Side & Tabs
+   ========================================================================== */
+.max-width-1000 {
+    max-width: 1000px !important;
+    width: 90% !important;
+}
+
+.modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background-color: rgba(0, 0, 0, 0.15);
+    padding: 0 16px;
+}
+
+.modal-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.modal-tab:hover {
+    color: var(--text-primary);
+}
+.modal-tab.active {
+    color: var(--accent-indigo);
+    border-bottom-color: var(--accent-indigo);
+}
+
+.modal-tab-content {
+    display: none;
+    padding: 20px;
+    overflow-y: auto;
+    max-height: 60vh;
+}
+.modal-tab-content.active-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.batch-run-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.btn-batch-exec {
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+.btn-batch-exec.active {
+    background-color: var(--accent-indigo);
+    color: white;
+    border-color: var(--accent-indigo);
+}
+
+.comparison-side-by-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    min-height: 250px;
+}
+
+.comparison-column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.comparison-col-header {
+    margin: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.comparison-box {
+    flex-grow: 1;
+    background-color: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    color: #e5e7eb;
+    max-height: 350px;
+}
+
+.comparison-stats-row {
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.comparison-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.comparison-stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+.comparison-stat-val {
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+}
+
+/* ==========================================================================
+   Prompt Diff Highlighting
+   ========================================================================== */
+.diff-added {
+    background-color: rgba(16, 185, 129, 0.2) !important;
+    border-radius: 2px;
+    padding: 0 2px;
+    border-bottom: 1px solid #10b981;
+}
+.diff-removed {
+    background-color: rgba(239, 68, 68, 0.2) !important;
+    border-radius: 2px;
+    padding: 0 2px;
+    text-decoration: line-through;
+    border-bottom: 1px solid #ef4444;
+}
+
+.diff-params-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+.diff-params-table th,
+.diff-params-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+.diff-params-table th {
+    background-color: rgba(255, 255, 255, 0.02);
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.diff-removed-val {
+    color: #f87171;
+    font-family: var(--font-mono);
+}
+.diff-added-val {
+    color: #34d399;
+    font-family: var(--font-mono);
+}
+
+.diff-messages-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.diff-message-card {
+    background-color: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.diff-message-card.added {
+    border-color: rgba(16, 185, 129, 0.3);
+    background-color: rgba(16, 185, 129, 0.03);
+}
+.diff-message-card.deleted {
+    border-color: rgba(239, 68, 68, 0.3);
+    background-color: rgba(239, 68, 68, 0.03);
+}
+.diff-message-card.modified {
+    border-color: rgba(234, 179, 8, 0.3);
+    background-color: rgba(234, 179, 8, 0.03);
+}
+
+.diff-message-header {
+    padding: 6px 12px;
+    background-color: rgba(255, 255, 255, 0.02);
+    font-size: 11px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.role-badge {
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 9px;
+}
+.role-badge.system { background-color: rgba(14, 165, 233, 0.15); color: #38bdf8; }
+.role-badge.human { background-color: rgba(168, 85, 247, 0.15); color: #c084fc; }
+.role-badge.ai { background-color: rgba(16, 185, 129, 0.15); color: #34d399; }
+.role-badge.tool { background-color: rgba(234, 179, 8, 0.15); color: #facc15; }
+
+.diff-message-body {
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: #e5e7eb;
+}
+.diff-section-title {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.text-link {
+    color: var(--accent-indigo);
+    font-size: 11px;
+    text-decoration: underline;
+}
+.text-link:hover {
+    color: var(--accent-indigo-hover);
+}
+
+/* ==========================================================================
+   Infer Delta Selection Layout
+   ========================================================================== */
+.inferred-change-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.inferred-change-item:hover {
+    border-color: var(--accent-indigo);
+    background-color: var(--bg-input-focus);
+}
+.inferred-change-item input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-indigo);
+}
+.inferred-change-label {
+    flex-grow: 1;
+    font-size: 12.5px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.inferred-change-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: rgba(99, 102, 241, 0.15);
+    color: var(--accent-indigo);
+    text-transform: uppercase;
+}
+

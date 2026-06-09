@@ -17,6 +17,28 @@ class LangSmithService:
         self._client = None
         self.runs_dir = settings.RUNS_DIR
         self.runs_dir.mkdir(parents=True, exist_ok=True)
+        self._run_db_migrations()
+
+    def _run_db_migrations(self):
+        """Runs auto-migrations on startup to add new baseline columns if missing."""
+        db = SessionLocal()
+        try:
+            conn = db.connection().connection
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(runs)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if "baseline_output" not in columns:
+                cursor.execute("ALTER TABLE runs ADD COLUMN baseline_output TEXT")
+            if "baseline_latency_ms" not in columns:
+                cursor.execute("ALTER TABLE runs ADD COLUMN baseline_latency_ms FLOAT")
+            if "baseline_token_usage" not in columns:
+                cursor.execute("ALTER TABLE runs ADD COLUMN baseline_token_usage JSON")
+            conn.commit()
+        except Exception as e:
+            print(f"Auto-migration failed/skipped: {e}")
+        finally:
+            db.close()
 
     @property
     def client(self) -> Client:
@@ -75,13 +97,81 @@ class LangSmithService:
                         content=str(msg_data)
                     ))
 
+        # Extract baseline outputs
+        baseline_output = None
+        if run.outputs:
+            out = run.outputs.get('output')
+            if isinstance(out, dict):
+                if "lc" in out or "type" in out:
+                    try:
+                        loaded_msg = load(out)
+                        baseline_output = getattr(loaded_msg, "content", str(loaded_msg))
+                    except Exception:
+                        baseline_output = out.get('content', str(out))
+                else:
+                    baseline_output = out.get('content', str(out))
+            elif isinstance(out, str):
+                baseline_output = out
+            elif isinstance(out, list) and len(out) > 0:
+                first = out[0]
+                if isinstance(first, dict):
+                    baseline_output = first.get('text', first.get('content', str(first)))
+                else:
+                    baseline_output = str(first)
+            else:
+                fallback_keys = ['output_messages', 'generations', 'text']
+                found_val = None
+                for k in fallback_keys:
+                    if k in run.outputs:
+                        found_val = run.outputs[k]
+                        break
+                if found_val:
+                    if isinstance(found_val, list) and len(found_val) > 0:
+                        baseline_output = str(found_val[0])
+                    else:
+                        baseline_output = str(found_val)
+                else:
+                    baseline_output = str(run.outputs)
+
+        # Compute baseline latency
+        baseline_latency_ms = None
+        if run.start_time and run.end_time:
+            baseline_latency_ms = (run.end_time - run.start_time).total_seconds() * 1000.0
+
+        # Extract token usage details
+        baseline_token_usage = {}
+        if getattr(run, "prompt_tokens", None) is not None:
+            baseline_token_usage['prompt_tokens'] = run.prompt_tokens
+        if getattr(run, "completion_tokens", None) is not None:
+            baseline_token_usage['completion_tokens'] = run.completion_tokens
+        if getattr(run, "total_tokens", None) is not None:
+            baseline_token_usage['total_tokens'] = run.total_tokens
+
+        # Fallback to run.extra metadata if top-level tokens are not set
+        if not baseline_token_usage and run.extra:
+            for path in [["token_usage"], ["metadata", "token_usage"], ["invocation_params", "token_usage"]]:
+                curr = run.extra
+                for p in path:
+                    if isinstance(curr, dict):
+                        curr = curr.get(p)
+                if isinstance(curr, dict) and any("token" in k for k in curr):
+                    baseline_token_usage = {
+                        "prompt_tokens": curr.get("prompt_tokens", curr.get("input_tokens")),
+                        "completion_tokens": curr.get("completion_tokens", curr.get("output_tokens")),
+                        "total_tokens": curr.get("total_tokens")
+                    }
+                    break
+
         # 3. Create RunConfig object
         config = RunConfig(
             run_id=run_id,
             model_name=model_name,
             temperature=float(temperature),
             messages=messages,
-            tools=tools or []
+            tools=tools or [],
+            baseline_output=baseline_output,
+            baseline_latency_ms=baseline_latency_ms,
+            baseline_token_usage=baseline_token_usage
         )
 
         # 4. Save to JSON file
@@ -102,6 +192,9 @@ class LangSmithService:
             db_run.messages = [msg.model_dump() for msg in config.messages]
             db_run.tools = config.tools
             db_run.env_vars = config.env_vars
+            db_run.baseline_output = config.baseline_output
+            db_run.baseline_latency_ms = config.baseline_latency_ms
+            db_run.baseline_token_usage = config.baseline_token_usage
             db.commit()
         finally:
             db.close()
@@ -123,7 +216,10 @@ class LangSmithService:
                     temperature=db_run.temperature,
                     messages=db_run.messages,
                     tools=db_run.tools,
-                    env_vars=db_run.env_vars
+                    env_vars=db_run.env_vars,
+                    baseline_output=db_run.baseline_output,
+                    baseline_latency_ms=db_run.baseline_latency_ms,
+                    baseline_token_usage=db_run.baseline_token_usage
                 )
             
             # Migration fallback: read JSON and save to DB
@@ -174,6 +270,9 @@ class LangSmithService:
                     "message_count": len(r.messages) if r.messages else 0,
                     "tool_count": len(r.tools) if r.tools else 0,
                     "temperature": r.temperature,
+                    "baseline_output": r.baseline_output,
+                    "baseline_latency_ms": r.baseline_latency_ms,
+                    "baseline_token_usage": r.baseline_token_usage,
                     "last_modified": r.updated_at.timestamp() if r.updated_at else r.created_at.timestamp()
                 }
                 for r in runs

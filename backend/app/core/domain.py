@@ -11,6 +11,9 @@ class RunRecord(Base):
     messages = Column(JSON, nullable=False)
     tools = Column(JSON, nullable=False)
     env_vars = Column(JSON, nullable=True)
+    baseline_output = Column(String, nullable=True)
+    baseline_latency_ms = Column(Float, nullable=True)
+    baseline_token_usage = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -19,6 +19,9 @@ class RunConfig(BaseModel):
     messages: List[MessageSchema] = Field(default_factory=list, description="Ordered list of conversation messages")
     tools: List[Dict[str, Any]] = Field(default_factory=list, description="List of tools bound to the model")
     env_vars: Optional[Dict[str, str]] = Field(default_factory=dict, description="Environment variables to set temporarily for the run")
+    baseline_output: Optional[str] = Field(None, description="The original output from LangSmith")
+    baseline_latency_ms: Optional[float] = Field(None, description="The original latency in milliseconds")
+    baseline_token_usage: Optional[Dict[str, Any]] = Field(None, description="The original token usage details")
 
 class FetchRequest(BaseModel):
     run_id: str = Field(..., description="The unique LangSmith run ID to download")

@@ -14,3 +14,4 @@ class TrialSchema(BaseModel):
 class BulkTrialRequest(BaseModel):
     delta_id: str = Field(..., description="ID of the delta to apply")
     run_ids: List[str] = Field(..., description="List of Run IDs to patch and execute")
+    batch_size: Optional[int] = Field(1, description="Number of times to run each patched run to collect average results")

@@ -21,3 +21,14 @@ async def list_deltas():
         return delta_service.list_deltas()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{delta_id}")
+async def delete_delta(delta_id: str):
+    """Deletes a strict prompt delta and all its trials."""
+    try:
+        delta_service.delete_delta(delta_id)
+        return {"status": "success", "message": f"Delta '{delta_id}' and associated trials deleted."}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

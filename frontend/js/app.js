@@ -3,15 +3,26 @@
 // ==========================================================================
 
 import { state } from './state.js';
-import { DOM, saveModalContent, closeModal } from './ui.js';
+import { DOM, saveModalContent, closeModal, closeComparisonModal, closeInferModal } from './ui.js';
 import { fetchRunFromLangSmith, refreshRunsList, runSimulation, bulkDeleteRuns } from './api.js';
 import { resetPlayground, addBlankEnvVar, addBlankMessage, validateToolsJson, toggleSelectAll, updateBulkActionBar } from './components.js';
+import { refreshDeltasList, submitCreateDelta, updateDeltaFormOptions, openInferDeltaModal, saveInferredDelta } from './deltas.js';
+import { executeBulkTrials, selectAllReplay, clearTrialsForDelta, refreshTrialsList } from './trials.js';
+import { switchModalTab } from './diff.js';
 
-document.addEventListener("DOMContentLoaded", () => {
+const init = () => {
     setupEventListeners();
     refreshRunsList();
     resetPlayground();
-});
+    updateDeltaFormOptions();
+    refreshDeltasList(); // Load existing deltas on startup
+};
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+} else {
+    init();
+}
 
 function setupEventListeners() {
     // 1. Fetch run from LangSmith
@@ -69,6 +80,47 @@ function setupEventListeners() {
         updateBulkActionBar();
     });
     DOM.btnBulkApply.addEventListener("click", handleBulkActionApply);
+
+    // 11. View Tab Switching
+    DOM.tabPlayground.addEventListener("click", () => {
+        DOM.tabPlayground.classList.add("active");
+        DOM.tabDeltas.classList.remove("active");
+        DOM.playgroundView.classList.remove("hidden");
+        DOM.deltasView.classList.add("hidden");
+    });
+    
+    DOM.tabDeltas.addEventListener("click", () => {
+        DOM.tabPlayground.classList.remove("active");
+        DOM.tabDeltas.classList.add("active");
+        DOM.playgroundView.classList.add("hidden");
+        DOM.deltasView.classList.remove("hidden");
+        refreshDeltasList();
+    });
+
+    // 12. Delta Form Options Visibility & Submission
+    DOM.deltaComponent.addEventListener("change", updateDeltaFormOptions);
+    DOM.deltaOperation.addEventListener("change", updateDeltaFormOptions);
+    DOM.createDeltaForm.addEventListener("submit", submitCreateDelta);
+    DOM.btnRefreshDeltas.addEventListener("click", refreshDeltasList);
+
+    // 13. Replay Checklist and Execution
+    DOM.btnSelectAllReplay.addEventListener("click", selectAllReplay);
+    DOM.btnExecuteTrials.addEventListener("click", executeBulkTrials);
+    DOM.btnRefreshTrials.addEventListener("click", refreshTrialsList);
+    DOM.btnClearTrials.addEventListener("click", clearTrialsForDelta);
+
+    // 14. Comparison Modal events
+    DOM.btnCloseComparison.addEventListener("click", closeComparisonModal);
+    DOM.modalOverlayComparison.addEventListener("click", closeComparisonModal);
+    DOM.modalTabOutput.addEventListener("click", () => switchModalTab('output'));
+    DOM.modalTabDiff.addEventListener("click", () => switchModalTab('diff'));
+
+    // 15. Infer Delta from Playground actions
+    DOM.btnInferDelta.addEventListener("click", openInferDeltaModal);
+    DOM.btnCloseInfer.addEventListener("click", closeInferModal);
+    DOM.btnCancelInfer.addEventListener("click", closeInferModal);
+    DOM.modalOverlayInfer.addEventListener("click", closeInferModal);
+    DOM.btnSaveInferred.addEventListener("click", saveInferredDelta);
 }
 
 async function handleBulkActionApply() {

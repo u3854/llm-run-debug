@@ -19,6 +19,11 @@ export function loadStateFromRunConfig(config) {
     // Update form elements
     DOM.activeRunTitle.textContent = config.run_id ? `Run Debugger` : `Playground Sandbox`;
     DOM.activeRunIdBadge.textContent = config.run_id || "unsaved_playground";
+    if (config.run_id) {
+        DOM.btnInferDelta.removeAttribute("disabled");
+    } else {
+        DOM.btnInferDelta.setAttribute("disabled", "true");
+    }
     DOM.modelNameInput.value = config.model_name;
     DOM.temperatureInput.value = config.temperature;
     DOM.tempVal.textContent = config.temperature.toFixed(1);
@@ -299,6 +304,11 @@ export function renderMessages() {
                 </div>
 
                 <div style="display:flex; gap: 4px;">
+                    ${(msg.role === 'system' && state.activeRunId) ? `
+                        <button class="btn-icon text-indigo btn-save-delta-from-msg" data-index="${index}" title="Infer & Save Delta from playground changes">
+                            <i class="fa-solid fa-magic"></i>
+                        </button>
+                    ` : ''}
                     <button class="btn-icon btn-expand-msg" data-index="${index}" title="Open Large Message Editor">
                         <i class="fa-solid fa-expand"></i>
                     </button>
@@ -326,6 +336,14 @@ export function renderMessages() {
         card.querySelector(".message-textarea").addEventListener("input", handleContentInput);
         card.querySelector(".meta-name").addEventListener("input", handleNameInput);
         card.querySelector(".btn-delete-msg").addEventListener("click", handleDeleteMessage);
+
+        const saveDeltaBtn = card.querySelector(".btn-save-delta-from-msg");
+        if (saveDeltaBtn) {
+            saveDeltaBtn.addEventListener("click", async () => {
+                const { openInferDeltaModal } = await import('./deltas.js');
+                openInferDeltaModal();
+            });
+        }
 
         const header = card.querySelector(".message-card-header");
         header.addEventListener("click", (e) => {

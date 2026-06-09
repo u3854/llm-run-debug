@@ -99,6 +99,13 @@ class LangSmithService:
             data = json.load(f)
         return RunConfig(**data)
 
+    def delete_run_config(self, run_id: str) -> None:
+        """Deletes a locally saved RunConfig file by ID."""
+        file_path = self.runs_dir / f"{run_id}.json"
+        if not file_path.exists():
+            raise FileNotFoundError(f"Run config file for '{run_id}' does not exist.")
+        file_path.unlink()
+
     def list_saved_runs(self) -> List[Dict[str, Any]]:
         """Lists metadata of all locally saved runs."""
         saved_runs = []

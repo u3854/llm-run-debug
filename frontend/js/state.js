@@ -1,0 +1,16 @@
+// ==========================================================================
+// Application State & Constants
+// ==========================================================================
+
+export const state = {
+    activeRunId: null,
+    modelName: "gpt-4o-mini",
+    temperature: 0.0,
+    messages: [],
+    tools: [],
+    env_vars: {},                // Holds key-value environment pairs
+    collapsedMessages: new Set(), // Set of collapsed message card indexes
+    activeModalMsgIndex: null     // Index of message active in the modal
+};
+
+export const API_BASE = "/api";

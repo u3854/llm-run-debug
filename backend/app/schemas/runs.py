@@ -28,3 +28,7 @@ class TestRunResponse(BaseModel):
     tool_calls: List[Dict[str, Any]] = Field(default_factory=list, description="Tool calls generated during the run")
     latency_ms: float = Field(0.0, description="Execution time in milliseconds")
     usage: Dict[str, Any] = Field(default_factory=dict, description="Token usage details (prompt, completion, total tokens)")
+
+class BulkDeleteRequest(BaseModel):
+    run_ids: List[str] = Field(..., description="List of unique LangSmith run IDs to delete")
+

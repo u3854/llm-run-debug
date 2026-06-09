@@ -47,6 +47,22 @@
                         <i class="fa-solid fa-arrows-rotate"></i>
                     </button>
                 </div>
+                
+                <!-- Bulk Action Bar -->
+                <div class="bulk-action-bar hidden" id="bulk-action-bar">
+                    <div class="bulk-select-wrapper">
+                        <input type="checkbox" id="chk-select-all" class="chk-select-all" title="Select all runs">
+                        <span id="selected-count">0 selected</span>
+                    </div>
+                    <div class="bulk-actions-wrapper">
+                        <select id="bulk-action-select" class="bulk-action-select">
+                            <option value="" disabled selected>Actions...</option>
+                            <option value="delete">Delete Selected</option>
+                        </select>
+                        <button type="button" class="btn-primary btn-bulk-apply" id="btn-bulk-apply" disabled>Apply</button>
+                    </div>
+                </div>
+
                 <div class="runs-list-container">
                     <ul id="runs-list" class="runs-list">
                         <!-- Dynamically populated runs list -->
@@ -246,6 +262,6 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Script Entrypoint -->
-    <script src="js/app.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

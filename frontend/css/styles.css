@@ -960,3 +960,121 @@ button {
     color: var(--accent-indigo);
     background-color: rgba(99, 102, 241, 0.05);
 }
+
+/* Run Item Delete Button Styling */
+.run-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-delete-run {
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast);
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+}
+
+.run-item:hover .btn-delete-run,
+.run-item.active .btn-delete-run {
+    opacity: 0.5;
+}
+
+.run-item:hover .btn-delete-run:hover {
+    opacity: 1;
+    color: var(--color-danger) !important;
+    background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* Bulk Action Bar Styling */
+.bulk-action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 11.5px;
+    gap: 8px;
+}
+
+.bulk-select-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+}
+
+.bulk-select-wrapper input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+.bulk-actions-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bulk-action-select {
+    padding: 4px 8px;
+    font-size: 11.5px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    width: auto;
+}
+
+.btn-bulk-apply {
+    padding: 4px 10px;
+    font-size: 11px;
+    height: 25px;
+}
+
+.btn-bulk-apply:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Adjust run item to display checkbox */
+.run-item {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 12px;
+}
+
+.run-item-checkbox-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 3px;
+}
+
+.run-item-checkbox-container input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+.run-item-main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+

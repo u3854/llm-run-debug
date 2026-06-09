@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from backend.app.schemas import FetchRequest, RunConfig, TestRunResponse
+from backend.app.schemas import FetchRequest, RunConfig, TestRunResponse, BulkDeleteRequest
 from backend.app.services.langsmith_service import LangSmithService
 from backend.app.services.run_runner import RunRunner
 
@@ -43,6 +43,37 @@ async def get_run(run_id: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{run_id}")
+async def delete_run(run_id: str):
+    """
+    Deletes a locally saved run by ID.
+    """
+    try:
+        langsmith_service.delete_run_config(run_id)
+        return {"status": "success", "message": f"Run '{run_id}' deleted."}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/bulk-delete")
+async def bulk_delete_runs(req: BulkDeleteRequest):
+    """
+    Deletes multiple locally saved runs.
+    """
+    success_count = 0
+    errors = []
+    for run_id in req.run_ids:
+        try:
+            langsmith_service.delete_run_config(run_id)
+            success_count += 1
+        except Exception as e:
+            errors.append(f"Failed to delete '{run_id}': {str(e)}")
+            
+    if errors:
+        return {"status": "partial", "deleted": success_count, "errors": errors}
+    return {"status": "success", "deleted": success_count}
 
 @router.post("/test", response_model=TestRunResponse)
 async def test_run(config: RunConfig):

@@ -5,6 +5,11 @@ from langchain_core.load import load
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage, ChatMessage
 from backend.app.schemas.runs import RunConfig, MessageSchema
 from backend.app.core.config import settings
+from backend.app.core.database import SessionLocal, engine
+from backend.app.core.domain import Base, RunRecord
+
+# Ensure tables are created on boot
+Base.metadata.create_all(bind=engine)
 
 class LangSmithService:
     def __init__(self):
@@ -84,53 +89,97 @@ class LangSmithService:
         return config
 
     def save_run_config(self, run_id: str, config: RunConfig) -> None:
-        """Saves a RunConfig object to data/runs/{run_id}.json."""
+        """Saves a RunConfig object to SQLite DB (and fallback JSON file)."""
+        db = SessionLocal()
+        try:
+            db_run = db.query(RunRecord).filter(RunRecord.run_id == run_id).first()
+            if not db_run:
+                db_run = RunRecord(run_id=run_id)
+                db.add(db_run)
+            
+            db_run.model_name = config.model_name
+            db_run.temperature = config.temperature
+            db_run.messages = [msg.model_dump() for msg in config.messages]
+            db_run.tools = config.tools
+            db_run.env_vars = config.env_vars
+            db.commit()
+        finally:
+            db.close()
+            
+        # Keep writing to JSON temporarily as a backup/migration safety net
         file_path = self.runs_dir / f"{run_id}.json"
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(config.model_dump(), f, indent=2, ensure_ascii=False)
 
     def load_run_config(self, run_id: str) -> RunConfig:
-        """Loads a RunConfig object from data/runs/{run_id}.json."""
-        file_path = self.runs_dir / f"{run_id}.json"
-        if not file_path.exists():
-            raise FileNotFoundError(f"Run config file for '{run_id}' does not exist.")
-        
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return RunConfig(**data)
+        """Loads a RunConfig object from DB (falling back to JSON if needed)."""
+        db = SessionLocal()
+        try:
+            db_run = db.query(RunRecord).filter(RunRecord.run_id == run_id).first()
+            if db_run:
+                return RunConfig(
+                    run_id=db_run.run_id,
+                    model_name=db_run.model_name,
+                    temperature=db_run.temperature,
+                    messages=db_run.messages,
+                    tools=db_run.tools,
+                    env_vars=db_run.env_vars
+                )
+            
+            # Migration fallback: read JSON and save to DB
+            file_path = self.runs_dir / f"{run_id}.json"
+            if file_path.exists():
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                config = RunConfig(**data)
+                self.save_run_config(run_id, config)
+                return config
+                
+            raise FileNotFoundError(f"Run config '{run_id}' does not exist.")
+        finally:
+            db.close()
 
     def delete_run_config(self, run_id: str) -> None:
-        """Deletes a locally saved RunConfig file by ID."""
+        """Deletes a saved RunConfig from DB and JSON by ID."""
+        db = SessionLocal()
+        try:
+            db_run = db.query(RunRecord).filter(RunRecord.run_id == run_id).first()
+            if db_run:
+                db.delete(db_run)
+                db.commit()
+        finally:
+            db.close()
+            
         file_path = self.runs_dir / f"{run_id}.json"
-        if not file_path.exists():
-            raise FileNotFoundError(f"Run config file for '{run_id}' does not exist.")
-        file_path.unlink()
+        if file_path.exists():
+            file_path.unlink()
 
     def list_saved_runs(self) -> List[Dict[str, Any]]:
-        """Lists metadata of all locally saved runs."""
-        saved_runs = []
-        if not self.runs_dir.exists():
-            return []
-            
-        for file in self.runs_dir.glob("*.json"):
-            try:
-                with open(file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    saved_runs.append({
-                        "run_id": file.stem,
-                        "model_name": data.get("model_name"),
-                        "message_count": len(data.get("messages", [])),
-                        "tool_count": len(data.get("tools", [])),
-                        "temperature": data.get("temperature", 0.0),
-                        "last_modified": file.stat().st_mtime
-                    })
-            except Exception:
-                # Skip malformed/corrupted files
-                continue
-                
-        # Sort by last modified time (newest first)
-        saved_runs.sort(key=lambda x: x["last_modified"], reverse=True)
-        return saved_runs
+        """Lists metadata of all saved runs from the Database, ensuring JSONs are migrated."""
+        # Pre-migrate missing JSON files to SQLite gracefully
+        if self.runs_dir.exists():
+            for file in self.runs_dir.glob("*.json"):
+                try:
+                    self.load_run_config(file.stem) # calling load automatically saves to DB if missing
+                except Exception:
+                    continue
+        
+        db = SessionLocal()
+        try:
+            runs = db.query(RunRecord).order_by(RunRecord.created_at.desc()).all()
+            return [
+                {
+                    "run_id": r.run_id,
+                    "model_name": r.model_name,
+                    "message_count": len(r.messages) if r.messages else 0,
+                    "tool_count": len(r.tools) if r.tools else 0,
+                    "temperature": r.temperature,
+                    "last_modified": r.updated_at.timestamp() if r.updated_at else r.created_at.timestamp()
+                }
+                for r in runs
+            ]
+        finally:
+            db.close()
 
     def _map_langchain_to_schema(self, msg) -> MessageSchema:
         """Converts a deserialized LangChain message object into MessageSchema."""

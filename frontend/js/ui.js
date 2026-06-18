@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { syncMessagesFromUI, renderMessages } from './components.js';
+import { syncMessagesFromUI, renderMessages, updateContentText } from './components.js';
 
 // ==========================================================================
 // DOM Elements
@@ -187,16 +187,25 @@ export function openModal(index) {
     state.activeModalMsgIndex = index;
     const msg = state.messages[index];
     
-    DOM.modalTextarea.value = msg.content || "";
+    let displayVal = "";
+    if (typeof msg.content === "string") {
+        displayVal = msg.content;
+    } else if (Array.isArray(msg.content)) {
+        const textBlock = msg.content.find(block => block && block.type === "text");
+        displayVal = textBlock && textBlock.text ? textBlock.text : "";
+    }
+    DOM.modalTextarea.value = displayVal || "";
     DOM.modalMsgRole.textContent = msg.role.toUpperCase();
-    DOM.modalCharCount.textContent = `${(msg.content || "").length} characters`;
+    DOM.modalCharCount.textContent = `${(displayVal || "").length} characters`;
     DOM.editorModal.classList.remove("hidden");
     DOM.modalTextarea.focus();
 }
 
 export function saveModalContent() {
     if (state.activeModalMsgIndex !== null) {
-        state.messages[state.activeModalMsgIndex].content = DOM.modalTextarea.value;
+        const val = DOM.modalTextarea.value;
+        const originalContent = state.messages[state.activeModalMsgIndex].content;
+        state.messages[state.activeModalMsgIndex].content = updateContentText(originalContent, val);
         const msg = state.messages[state.activeModalMsgIndex];
         renderMessages();
 

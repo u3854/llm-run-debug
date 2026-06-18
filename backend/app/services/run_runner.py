@@ -95,15 +95,25 @@ class RunRunner:
 
     def _map_schema_to_langchain(self, msg: MessageSchema):
         """Converts MessageSchema into the corresponding LangChain message type."""
+        content = msg.content
+        if isinstance(content, str):
+            trimmed = content.strip()
+            if (trimmed.startswith("[") and trimmed.endswith("]")) or (trimmed.startswith("{") and trimmed.endswith("}")):
+                try:
+                    import json
+                    content = json.loads(trimmed)
+                except Exception:
+                    pass
+
         role = msg.role.lower()
         if role == "system":
-            return SystemMessage(content=msg.content, name=msg.name)
+            return SystemMessage(content=content, name=msg.name)
         elif role in ["human", "user"]:
-            return HumanMessage(content=msg.content, name=msg.name)
+            return HumanMessage(content=content, name=msg.name)
         elif role in ["ai", "assistant"]:
             # Set tool_calls if any were generated in this step
             return AIMessage(
-                content=msg.content, 
+                content=content, 
                 name=msg.name, 
                 tool_calls=msg.tool_calls or []
             )
@@ -111,11 +121,11 @@ class RunRunner:
             if not msg.tool_call_id:
                 raise ValueError("Tool messages must contain a tool_call_id.")
             return ToolMessage(
-                content=msg.content, 
+                content=content, 
                 name=msg.name, 
                 tool_call_id=msg.tool_call_id
             )
         else:
             # Fallback to general ChatMessage
             from langchain_core.messages import ChatMessage as LcChatMessage
-            return LcChatMessage(content=msg.content, role=msg.role, name=msg.name)
+            return LcChatMessage(content=content, role=msg.role, name=msg.name)

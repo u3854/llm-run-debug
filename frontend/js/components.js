@@ -257,6 +257,65 @@ export function addBlankEnvVar() {
     renderEnvVars();
 }
 
+// Helpers for Multimodal/Structured Message Content
+function getMessageTextPreview(content) {
+    if (!content) return "(empty message)";
+    if (typeof content === "string") {
+        return content.length > 50 ? content.substring(0, 50) + "..." : content;
+    }
+    if (Array.isArray(content)) {
+        const textBlock = content.find(block => block && block.type === "text");
+        let textFound = textBlock && textBlock.text ? textBlock.text : "";
+        const hasImage = content.some(block => block && (block.type === "image_url" || block.image_url));
+        const imageText = hasImage ? " 🖼️ [Image]" : "";
+        if (textFound) {
+            return (textFound.length > 40 ? textFound.substring(0, 40) + "..." : textFound) + imageText;
+        }
+        return `[Multimodal: ${content.length} blocks]${imageText}`;
+    }
+    return "[Structured Content]";
+}
+
+function renderMediaPreviews(content) {
+    if (!Array.isArray(content)) return "";
+    const images = content.filter(block => block && (block.type === "image_url" || block.image_url));
+    if (images.length === 0) return "";
+    
+    return `
+        <div class="message-media-previews" style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+            ${images.map(img => {
+                const url = img.image_url ? (typeof img.image_url === 'string' ? img.image_url : img.image_url.url) : "";
+                if (!url) return "";
+                return `
+                    <div class="media-preview-item" style="position: relative; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; overflow: hidden; max-width: 200px; background: var(--bg-surface-secondary, #f8f9fa); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <img src="${url}" alt="Preview" style="max-width: 100%; height: auto; display: block; max-height: 120px; object-fit: contain; margin: 0 auto;" />
+                        <div style="background: rgba(0,0,0,0.6); color: white; font-size: 9px; padding: 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;" title="${url}">
+                            ${url.split('/').pop()}
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
+export function updateContentText(originalContent, newText) {
+    if (typeof originalContent === "string") {
+        return newText;
+    }
+    if (Array.isArray(originalContent)) {
+        const newContent = [...originalContent];
+        const textIdx = newContent.findIndex(block => block && block.type === "text");
+        if (textIdx !== -1) {
+            newContent[textIdx] = { ...newContent[textIdx], text: newText };
+        } else {
+            newContent.push({ type: "text", text: newText });
+        }
+        return newContent;
+    }
+    return newText;
+}
+
 export function renderMessages() {
     DOM.messagesContainer.innerHTML = "";
     DOM.messageCountBadge.textContent = `${state.messages.length} messages`;
@@ -277,7 +336,14 @@ export function renderMessages() {
         else if (msg.role === "ai" || msg.role === "assistant") roleColorClass = "ai";
         else if (msg.role === "tool") roleColorClass = "tool";
 
-        const previewText = msg.content ? (msg.content.length > 50 ? msg.content.substring(0, 50) + "..." : msg.content) : "(empty message)";
+        const previewText = getMessageTextPreview(msg.content);
+        let displayVal = "";
+        if (typeof msg.content === "string") {
+            displayVal = msg.content;
+        } else if (Array.isArray(msg.content)) {
+            const textBlock = msg.content.find(block => block && block.type === "text");
+            displayVal = textBlock && textBlock.text ? textBlock.text : "";
+        }
 
         card.innerHTML = `
             <div class="message-card-header">
@@ -318,7 +384,8 @@ export function renderMessages() {
                 </div>
             </div>
             <div class="message-card-body">
-                <textarea class="message-textarea" placeholder="Type message prompt content here..." data-index="${index}">${msg.content || ''}</textarea>
+                <textarea class="message-textarea" placeholder="Type message prompt content here..." data-index="${index}">${displayVal}</textarea>
+                ${renderMediaPreviews(msg.content)}
             </div>
             
             ${(msg.role === 'ai' || msg.role === 'assistant') && msg.tool_calls && msg.tool_calls.length ? `
@@ -366,7 +433,7 @@ export function renderMessages() {
                 state.collapsedMessages.add(idx);
                 card.classList.add("collapsed");
                 // Update preview text with latest value
-                collapsedPreview.textContent = textarea.value ? (textarea.value.length > 50 ? textarea.value.substring(0, 50) + "..." : textarea.value) : "(empty message)";
+                collapsedPreview.textContent = getMessageTextPreview(state.messages[idx].content);
                 collapsedPreview.style.display = "inline";
             }
         });
@@ -462,7 +529,7 @@ function handleRoleChange(e) {
 
 function handleContentInput(e) {
     const index = parseInt(e.target.dataset.index);
-    state.messages[index].content = e.target.value;
+    state.messages[index].content = updateContentText(state.messages[index].content, e.target.value);
 }
 
 function handleNameInput(e) {
@@ -517,7 +584,7 @@ export function syncMessagesFromUI() {
         const toolIdInput = card.querySelector(".meta-tool-id");
 
         if (textarea && state.messages[idx]) {
-            state.messages[idx].content = textarea.value;
+            state.messages[idx].content = updateContentText(state.messages[idx].content, textarea.value);
         }
         if (nameInput && state.messages[idx]) {
             state.messages[idx].name = nameInput.value.trim() || null;

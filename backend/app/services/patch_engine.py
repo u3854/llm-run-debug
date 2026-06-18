@@ -95,20 +95,56 @@ class PatchEngine:
                 )
                 
         target_msg = run.messages[target_msg_idx]
+        original = target_msg.content
         
-        # Apply the deterministic string manipulation
-        new_content = self._apply_string_operation(
-            original=target_msg.content,
-            operation=delta.operation,
-            value=str(delta.value),
-            anchor=delta.anchor,
-            strict=delta.strict
-        )
-        
-        if new_content == target_msg.content:
-            raise AlreadyAppliedError("The delta operation resulted in no changes to the message.")
-            
-        target_msg.content = new_content
+        # If it's a full replacement and there is no anchor, handle direct assignment of lists/dicts
+        if not isinstance(original, str) and delta.operation == "replace" and not delta.anchor:
+            target_msg.content = delta.value
+            return
+
+        # If it's a list (multimodal content blocks), target the first text block for editing
+        if isinstance(original, list):
+            # Try to find the first block of type "text"
+            text_block = None
+            for block in original:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text_block = block
+                    break
+
+            if text_block is not None:
+                orig_text = text_block.get("text", "")
+                new_text = self._apply_string_operation(
+                    original=orig_text,
+                    operation=delta.operation,
+                    value=str(delta.value),
+                    anchor=delta.anchor,
+                    strict=delta.strict
+                )
+                if new_text == orig_text:
+                    raise AlreadyAppliedError("The delta operation resulted in no changes to the message text block.")
+                text_block["text"] = new_text
+            else:
+                # If there's no text block, and it's append/prepend/replace, we insert a new text block
+                if delta.operation == "append":
+                    original.append({"type": "text", "text": str(delta.value)})
+                elif delta.operation == "prepend":
+                    original.insert(0, {"type": "text", "text": str(delta.value)})
+                elif delta.operation == "replace" and not delta.anchor:
+                    original.append({"type": "text", "text": str(delta.value)})
+                else:
+                    raise PatchError("Cannot apply string operations on multimodal message containing no text block.")
+        else:
+            # Standard string operation for simple string contents
+            new_content = self._apply_string_operation(
+                original=str(original),
+                operation=delta.operation,
+                value=str(delta.value),
+                anchor=delta.anchor,
+                strict=delta.strict
+            )
+            if new_content == original:
+                raise AlreadyAppliedError("The delta operation resulted in no changes to the message.")
+            target_msg.content = new_content
 
     def _patch_temperature(self, run: RunConfig, delta: DeltaCreate) -> None:
         """Patches the float temperature value. Only allows full replacement."""

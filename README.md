@@ -34,7 +34,7 @@ Or with uv:
 ```bash
 uv run main.py
 ```
-Once running, open your browser and navigate to **[http://localhost:8000](http://localhost:8000)**.
+Once running, open your browser and navigate to **[http://localhost:8010](http://localhost:8010)**.
 
 ## How It Works
 

@@ -10,6 +10,9 @@ export function loadStateFromRunConfig(config) {
     state.activeRunId = config.run_id;
     state.modelName = config.model_name;
     state.temperature = config.temperature;
+    state.maxTokens = config.max_tokens !== undefined && config.max_tokens !== null ? config.max_tokens : null;
+    state.thinkingMode = config.thinking_mode || "default";
+    state.thinkingEffort = config.thinking_effort || "";
     state.messages = config.messages;
     state.tools = config.tools;
     state.env_vars = config.env_vars || {};
@@ -25,8 +28,24 @@ export function loadStateFromRunConfig(config) {
         DOM.btnInferDelta.setAttribute("disabled", "true");
     }
     DOM.modelNameInput.value = config.model_name;
-    DOM.temperatureInput.value = config.temperature;
-    DOM.tempVal.textContent = config.temperature.toFixed(1);
+    
+    // Populate advanced inputs
+    DOM.maxTokensInput.value = config.max_tokens !== undefined && config.max_tokens !== null ? config.max_tokens : "";
+    DOM.thinkingModeSelect.value = config.thinking_mode || "default";
+    DOM.thinkingEffortInput.value = config.thinking_effort || "";
+
+    if (config.temperature === null || config.temperature === undefined) {
+        DOM.omitTempCheckbox.checked = true;
+        DOM.temperatureInput.disabled = true;
+        DOM.tempVal.textContent = "Omitted";
+        state.temperature = null;
+    } else {
+        DOM.omitTempCheckbox.checked = false;
+        DOM.temperatureInput.disabled = false;
+        DOM.temperatureInput.value = config.temperature;
+        DOM.tempVal.textContent = config.temperature.toFixed(1);
+        state.temperature = config.temperature;
+    }
 
     // Render Env Variables & Messages
     renderEnvVars();
@@ -45,6 +64,8 @@ export function loadStateFromRunConfig(config) {
     DOM.metricLatency.textContent = "-";
     DOM.metricTokensTotal.textContent = "-";
     DOM.tokenBreakdownPanel.classList.add("hidden");
+    DOM.backupPathLabel.textContent = "";
+    DOM.backupPathLabel.style.display = "none";
 
     // Highlight active run in list
     document.querySelectorAll(".run-item").forEach(item => {
@@ -61,6 +82,9 @@ export function resetPlayground() {
         run_id: null,
         model_name: "gpt-4o-mini",
         temperature: 0.0,
+        max_tokens: null,
+        thinking_mode: "default",
+        thinking_effort: "",
         messages: [
             { role: "system", content: "You are a helpful AI assistant." },
             { role: "human", content: "Hello! What can you help me with?" }
@@ -113,7 +137,7 @@ export function renderRunsList(runs) {
                 <div class="run-item-model">${run.model_name}</div>
                 <div class="run-item-details">
                     <span><i class="fa-solid fa-toolbox"></i> ${run.tool_count} tools</span>
-                    <span><i class="fa-solid fa-thermometer"></i> temp: ${run.temperature.toFixed(1)}</span>
+                    <span><i class="fa-solid fa-thermometer"></i> temp: ${(run.temperature !== null && run.temperature !== undefined) ? run.temperature.toFixed(1) : "omitted"}</span>
                 </div>
             </div>
         `;
@@ -469,15 +493,42 @@ export function renderResponse(content) {
         return;
     }
     
-    // Escape HTML to prevent injection and render linebreaks nicely
-    const escaped = content
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-        
-    DOM.simulationOutput.innerHTML = `<div>${escaped}</div>`;
+    const escapeHtml = (text) => {
+        if (!text) return "";
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+
+    if (typeof content === "string") {
+        const escaped = escapeHtml(content);
+        DOM.simulationOutput.innerHTML = `<div style="white-space: pre-wrap;">${escaped}</div>`;
+    } else if (Array.isArray(content)) {
+        let html = "";
+        content.forEach(block => {
+            if (!block) return;
+            if (block.type === "thinking" || block.thinking) {
+                const thinkingText = block.thinking || block.text || "";
+                html += `
+                    <div class="thinking-block" style="background: rgba(99, 102, 241, 0.05); border-left: 3px solid var(--color-primary, #6366f1); padding: 10px 14px; margin-bottom: 12px; border-radius: 0 8px 8px 0; font-family: monospace; font-size: 12px; color: var(--text-secondary, #64748b); white-space: pre-wrap;">
+                        <div style="font-weight: bold; margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-primary, #6366f1);"><i class="fa-solid fa-brain"></i> Thinking Process</div>
+                        ${escapeHtml(thinkingText)}
+                    </div>
+                `;
+            } else if (block.type === "text" || block.text) {
+                const textVal = block.text || "";
+                html += `<div style="white-space: pre-wrap; margin-bottom: 12px;">${escapeHtml(textVal)}</div>`;
+            } else {
+                html += `<div class="unknown-block" style="font-size: 11px; color: var(--text-light, #94a3b8); margin-bottom: 12px;">[Block type: ${block.type || 'unknown'}]</div>`;
+            }
+        });
+        DOM.simulationOutput.innerHTML = html || `<div class="empty-state">No readable content blocks.</div>`;
+    } else {
+        DOM.simulationOutput.innerHTML = `<pre style="font-size: 11px; overflow-x: auto; background: var(--bg-surface-secondary, #f8f9fa); padding: 10px; border-radius: 6px;">${escapeHtml(JSON.stringify(content, null, 2))}</pre>`;
+    }
 }
 
 export function renderToolCalls(toolCalls) {

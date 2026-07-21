@@ -34,6 +34,12 @@ class LangSmithService:
                 cursor.execute("ALTER TABLE runs ADD COLUMN baseline_latency_ms FLOAT")
             if "baseline_token_usage" not in columns:
                 cursor.execute("ALTER TABLE runs ADD COLUMN baseline_token_usage JSON")
+            if "max_tokens" not in columns:
+                cursor.execute("ALTER TABLE runs ADD COLUMN max_tokens INTEGER")
+            if "thinking_mode" not in columns:
+                cursor.execute("ALTER TABLE runs ADD COLUMN thinking_mode TEXT")
+            if "thinking_effort" not in columns:
+                cursor.execute("ALTER TABLE runs ADD COLUMN thinking_effort TEXT")
             conn.commit()
         except Exception as e:
             print(f"Auto-migration failed/skipped: {e}")
@@ -59,7 +65,21 @@ class LangSmithService:
         # 1. Parse invocation parameters (model name, temperature, tools)
         inv_params = run.extra.get('invocation_params', {}) if run.extra else {}
         model_name = inv_params.get('model', inv_params.get('model_name', 'gpt-4o-mini'))
-        temperature = inv_params.get('temperature', 0.0)
+        temperature_raw = inv_params.get('temperature')
+        temperature = float(temperature_raw) if temperature_raw is not None else None
+        
+        max_tokens_raw = inv_params.get('max_tokens', inv_params.get('max_tokens_to_sample'))
+        max_tokens = int(max_tokens_raw) if max_tokens_raw is not None else None
+        
+        thinking_mode = "default"
+        thinking_effort = ""
+        thinking_raw = inv_params.get('thinking')
+        if isinstance(thinking_raw, dict):
+            thinking_mode = thinking_raw.get("type", "default")
+            thinking_effort = str(thinking_raw.get("budget_tokens", ""))
+        effort_raw = inv_params.get('effort')
+        if effort_raw:
+            thinking_effort = str(effort_raw)
         
         # We can extract tools from invocation parameters or inputs
         tools = inv_params.get('tools', [])
@@ -166,9 +186,12 @@ class LangSmithService:
         config = RunConfig(
             run_id=run_id,
             model_name=model_name,
-            temperature=float(temperature),
+            temperature=temperature,
             messages=messages,
             tools=tools or [],
+            max_tokens=max_tokens,
+            thinking_mode=thinking_mode,
+            thinking_effort=thinking_effort,
             baseline_output=baseline_output,
             baseline_latency_ms=baseline_latency_ms,
             baseline_token_usage=baseline_token_usage
@@ -192,6 +215,9 @@ class LangSmithService:
             db_run.messages = [msg.model_dump() for msg in config.messages]
             db_run.tools = config.tools
             db_run.env_vars = config.env_vars
+            db_run.max_tokens = config.max_tokens
+            db_run.thinking_mode = config.thinking_mode
+            db_run.thinking_effort = config.thinking_effort
             db_run.baseline_output = config.baseline_output
             db_run.baseline_latency_ms = config.baseline_latency_ms
             db_run.baseline_token_usage = config.baseline_token_usage
@@ -203,7 +229,7 @@ class LangSmithService:
         file_path = self.runs_dir / f"{run_id}.json"
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(config.model_dump(), f, indent=2, ensure_ascii=False)
-
+ 
     def load_run_config(self, run_id: str) -> RunConfig:
         """Loads a RunConfig object from DB (falling back to JSON if needed)."""
         db = SessionLocal()
@@ -217,6 +243,9 @@ class LangSmithService:
                     messages=db_run.messages,
                     tools=db_run.tools,
                     env_vars=db_run.env_vars,
+                    max_tokens=db_run.max_tokens,
+                    thinking_mode=db_run.thinking_mode,
+                    thinking_effort=db_run.thinking_effort,
                     baseline_output=db_run.baseline_output,
                     baseline_latency_ms=db_run.baseline_latency_ms,
                     baseline_token_usage=db_run.baseline_token_usage

@@ -44,9 +44,35 @@ function setupEventListeners() {
         state.temperature = parseFloat(value);
     });
 
+    // 3b. Omit Temperature Checkbox
+    DOM.omitTempCheckbox.addEventListener("change", (e) => {
+        const omit = e.target.checked;
+        DOM.temperatureInput.disabled = omit;
+        if (omit) {
+            state.temperature = null;
+            DOM.tempVal.textContent = "Omitted";
+        } else {
+            const value = parseFloat(DOM.temperatureInput.value).toFixed(1);
+            DOM.tempVal.textContent = value;
+            state.temperature = parseFloat(value);
+        }
+    });
+
     // 4. Model Name Input
     DOM.modelNameInput.addEventListener("input", (e) => {
         state.modelName = e.target.value.trim();
+    });
+
+    // 4b. Advanced Settings Input Listeners
+    DOM.maxTokensInput.addEventListener("input", (e) => {
+        const val = parseInt(e.target.value);
+        state.maxTokens = isNaN(val) ? null : val;
+    });
+    DOM.thinkingModeSelect.addEventListener("change", (e) => {
+        state.thinkingMode = e.target.value;
+    });
+    DOM.thinkingEffortInput.addEventListener("input", (e) => {
+        state.thinkingEffort = e.target.value.trim();
     });
 
     // 5. Tools JSON Editor Real-time Validation

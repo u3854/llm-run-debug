@@ -6,6 +6,9 @@ export const state = {
     activeRunId: null,
     modelName: "gpt-4o-mini",
     temperature: 0.0,
+    maxTokens: null,
+    thinkingMode: "default",
+    thinkingEffort: "",
     messages: [],
     tools: [],
     env_vars: {},                // Holds key-value environment pairs

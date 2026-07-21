@@ -1,6 +1,7 @@
 import time
 import os
 from contextlib import contextmanager
+from typing import Optional
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
 from backend.app.schemas.runs import RunConfig, MessageSchema, TestRunResponse
 
@@ -32,8 +33,13 @@ class RunRunner:
         and invokes the LLM to get the output response and stats.
         """
         with self._temporary_env(config.env_vars or {}):
-            # 1. Recreate the LLM client
-            llm = self._create_llm_instance(config.model_name, config.temperature)
+            llm = self._create_llm_instance(
+                config.model_name,
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+                thinking_mode=config.thinking_mode,
+                thinking_effort=config.thinking_effort
+            )
 
             # 2. Bind tools if present
             if config.tools:
@@ -81,17 +87,79 @@ class RunRunner:
             # General fallback if there is other metadata
             usage = {k: v for k, v in response.response_metadata.items() if "token" in k.lower()}
 
+        # 6. Save backup of the raw response to data/simulations/
+        backup_path = None
+        try:
+            import json
+            from datetime import datetime
+            from backend.app.core.config import settings
+            
+            backup_dir = settings.RUNS_DIR.parent / "simulations"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_run_id = config.run_id or "playground"
+            backup_filename = f"sim_{safe_run_id}_{timestamp}.json"
+            full_backup_path = backup_dir / backup_filename
+            
+            raw_response_data = None
+            if hasattr(response, "dict"):
+                try:
+                    raw_response_data = response.dict()
+                except Exception:
+                    pass
+            
+            if not raw_response_data:
+                try:
+                    raw_response_data = {
+                        "content": response.content,
+                        "additional_kwargs": getattr(response, "additional_kwargs", {}),
+                        "response_metadata": getattr(response, "response_metadata", {}),
+                        "usage_metadata": getattr(response, "usage_metadata", {}),
+                        "id": getattr(response, "id", None),
+                        "type": getattr(response, "type", "ai"),
+                    }
+                except Exception as e:
+                    raw_response_data = {"error": f"Failed to serialize: {str(e)}", "repr": repr(response)}
+                    
+            backup_payload = {
+                "timestamp": datetime.now().isoformat(),
+                "config": config.model_dump(),
+                "raw_response": raw_response_data
+            }
+            
+            with open(full_backup_path, "w", encoding="utf-8") as f:
+                json.dump(backup_payload, f, indent=2, ensure_ascii=False)
+            
+            backup_path = str(full_backup_path)
+        except Exception as e:
+            print(f"Failed to save raw simulation backup: {str(e)}")
+
         return TestRunResponse(
             content=content,
             tool_calls=tool_calls,
             latency_ms=latency_ms,
-            usage=usage
+            usage=usage,
+            backup_path=backup_path
         )
 
-    def _create_llm_instance(self, model_name: str, temperature: float):
+    def _create_llm_instance(
+        self,
+        model_name: str,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        thinking_mode: Optional[str] = None,
+        thinking_effort: Optional[str] = None
+    ):
         """Creates the appropriate LangChain Chat model instance based on model name."""
         from backend.app.services.llm_builder import build_single_llm
-        return build_single_llm(model=model_name, temperature=temperature)
+        return build_single_llm(
+            model=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            thinking_mode=thinking_mode,
+            thinking_effort=thinking_effort
+        )
 
     def _map_schema_to_langchain(self, msg: MessageSchema):
         """Converts MessageSchema into the corresponding LangChain message type."""

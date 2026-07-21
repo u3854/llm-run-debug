@@ -150,7 +150,10 @@ class PatchEngine:
         """Patches the float temperature value. Only allows full replacement."""
         if delta.operation != "replace":
             raise PatchError("Non-string components like 'temperature' only support the 'replace' operation.")
-        run.temperature = float(delta.value)
+        if delta.value is None or delta.value == "" or str(delta.value).lower() in ("null", "none"):
+            run.temperature = None
+        else:
+            run.temperature = float(delta.value)
 
     def _patch_tools(self, run: RunConfig, delta: DeltaCreate) -> None:
         """Patches the JSON tools list. Only allows full replacement for now."""

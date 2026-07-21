@@ -87,12 +87,16 @@ export async function submitCreateDelta(e) {
     
     // Validate value types
     if (target_component === "temperature") {
-        const parsedTemp = parseFloat(rawVal);
-        if (isNaN(parsedTemp) || parsedTemp < 0 || parsedTemp > 2) {
-            showToast("Temperature must be a float between 0.0 and 2.0", "error");
-            return;
+        if (rawVal === "" || rawVal === null || rawVal === undefined || (typeof rawVal === "string" && (rawVal.trim().toLowerCase() === "none" || rawVal.trim().toLowerCase() === "null"))) {
+            value = null;
+        } else {
+            const parsedTemp = parseFloat(rawVal);
+            if (isNaN(parsedTemp) || parsedTemp < 0 || parsedTemp > 2) {
+                showToast("Temperature must be a float between 0.0 and 2.0 or 'none'/'null' to omit.", "error");
+                return;
+            }
+            value = parsedTemp;
         }
-        value = parsedTemp;
     } else if (target_component === "tools") {
         try {
             value = JSON.parse(rawVal);
@@ -264,13 +268,16 @@ export async function openInferDeltaModal() {
         }
 
         // 2. Temperature
-        if (parseFloat(state.temperature) !== parseFloat(baseline.temperature)) {
+        const tempChanged = (state.temperature !== baseline.temperature);
+        if (tempChanged) {
+            const baselineStr = (baseline.temperature !== null && baseline.temperature !== undefined) ? baseline.temperature.toFixed(1) : "Omitted";
+            const currentStr = (state.temperature !== null && state.temperature !== undefined) ? state.temperature.toFixed(1) : "Omitted";
             candidates.push({
-                description: `Temperature: ${baseline.temperature.toFixed(1)} &rarr; ${state.temperature.toFixed(1)}`,
+                description: `Temperature: ${baselineStr} &rarr; ${currentStr}`,
                 payload: {
                     target_component: "temperature",
                     operation: "replace",
-                    value: parseFloat(state.temperature),
+                    value: state.temperature !== null && state.temperature !== undefined ? parseFloat(state.temperature) : null,
                     strict: true
                 }
             });

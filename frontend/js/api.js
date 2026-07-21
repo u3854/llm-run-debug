@@ -133,7 +133,10 @@ export async function runSimulation() {
         temperature: state.temperature,
         messages: state.messages,
         tools: parsedTools,
-        env_vars: state.env_vars // Inject customized env keys
+        env_vars: state.env_vars,
+        max_tokens: state.maxTokens,
+        thinking_mode: state.thinkingMode,
+        thinking_effort: state.thinkingEffort
     };
 
     setLoading(DOM.btnRunSimulation, true);
@@ -147,6 +150,8 @@ export async function runSimulation() {
     DOM.metricLatency.textContent = "-";
     DOM.metricTokensTotal.textContent = "-";
     DOM.tokenBreakdownPanel.classList.add("hidden");
+    DOM.backupPathLabel.textContent = "";
+    DOM.backupPathLabel.style.display = "none";
 
     try {
         const response = await fetch(`${API_BASE}/runs/test`, {
@@ -166,6 +171,13 @@ export async function runSimulation() {
         updateExecutionStatus("SUCCESS", "status-success");
         renderResponse(result.content);
         renderToolCalls(result.tool_calls);
+        
+        if (result.backup_path) {
+            const filename = result.backup_path.split("/").pop().split("\\").pop();
+            DOM.backupPathLabel.textContent = `Backup: ${filename}`;
+            DOM.backupPathLabel.title = `Raw output backup saved at: ${result.backup_path}`;
+            DOM.backupPathLabel.style.display = "inline";
+        }
         
         // Update metrics
         DOM.metricLatency.textContent = `${result.latency_ms.toFixed(0)} ms`;

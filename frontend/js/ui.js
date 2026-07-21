@@ -26,6 +26,10 @@ export const DOM = {
     modelNameInput: document.getElementById("llm-model-name"),
     temperatureInput: document.getElementById("llm-temperature"),
     tempVal: document.getElementById("temp-val"),
+    omitTempCheckbox: document.getElementById("llm-omit-temp"),
+    maxTokensInput: document.getElementById("llm-max-tokens"),
+    thinkingModeSelect: document.getElementById("llm-thinking-mode"),
+    thinkingEffortInput: document.getElementById("llm-thinking-effort"),
     
     envContainer: document.getElementById("env-container"),
     btnAddEnv: document.getElementById("btn-add-env"),
@@ -46,6 +50,7 @@ export const DOM = {
     tokenBreakdownPanel: document.getElementById("token-breakdown-panel"),
     
     simulationOutput: document.getElementById("simulation-output-container"),
+    backupPathLabel: document.getElementById("backup-path-label"),
     toolCallsContainer: document.getElementById("tool-calls-container"),
     toolCallsCount: document.getElementById("tool-calls-count"),
     toastContainer: document.getElementById("toast-container"),

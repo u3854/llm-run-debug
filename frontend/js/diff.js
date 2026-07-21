@@ -181,11 +181,13 @@ function renderParamsDiff(oldConfig, newConfig) {
         `;
     }
     if (oldConfig.temperature !== newConfig.temperature) {
+        const oldTempText = (oldConfig.temperature !== null && oldConfig.temperature !== undefined) ? oldConfig.temperature.toFixed(1) : "Omitted";
+        const newTempText = (newConfig.temperature !== null && newConfig.temperature !== undefined) ? newConfig.temperature.toFixed(1) : "Omitted";
         rows += `
             <tr>
                 <td><strong>Temperature</strong></td>
-                <td class="diff-removed-val">${oldConfig.temperature.toFixed(1)}</td>
-                <td class="diff-added-val">${newConfig.temperature.toFixed(1)}</td>
+                <td class="diff-removed-val">${oldTempText}</td>
+                <td class="diff-added-val">${newTempText}</td>
             </tr>
         `;
     }

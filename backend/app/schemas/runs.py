@@ -15,10 +15,13 @@ class ToolSchema(BaseModel):
 class RunConfig(BaseModel):
     run_id: Optional[str] = Field(None, description="The LangSmith run ID if downloaded")
     model_name: str = Field("gpt-4o-mini", description="The identifier of the LLM model")
-    temperature: float = Field(0.0, description="The sampling temperature (0.0 to 2.0)")
+    temperature: Optional[float] = Field(None, description="The sampling temperature (0.0 to 2.0)")
     messages: List[MessageSchema] = Field(default_factory=list, description="Ordered list of conversation messages")
     tools: List[Dict[str, Any]] = Field(default_factory=list, description="List of tools bound to the model")
     env_vars: Optional[Dict[str, str]] = Field(default_factory=dict, description="Environment variables to set temporarily for the run")
+    max_tokens: Optional[int] = Field(None, description="The maximum number of tokens to generate")
+    thinking_mode: Optional[str] = Field("default", description="Thinking mode ('default', 'disabled', 'adaptive', 'enabled')")
+    thinking_effort: Optional[str] = Field("", description="Thinking effort ('low', 'medium', 'high' or budget tokens)")
     baseline_output: Optional[str] = Field(None, description="The original output from LangSmith")
     baseline_latency_ms: Optional[float] = Field(None, description="The original latency in milliseconds")
     baseline_token_usage: Optional[Dict[str, Any]] = Field(None, description="The original token usage details")
@@ -27,10 +30,11 @@ class FetchRequest(BaseModel):
     run_id: str = Field(..., description="The unique LangSmith run ID to download")
 
 class TestRunResponse(BaseModel):
-    content: str = Field(..., description="Response content returned by the LLM")
+    content: Union[str, List[Any], Dict[str, Any]] = Field(..., description="Response content returned by the LLM")
     tool_calls: List[Dict[str, Any]] = Field(default_factory=list, description="Tool calls generated during the run")
     latency_ms: float = Field(0.0, description="Execution time in milliseconds")
     usage: Dict[str, Any] = Field(default_factory=dict, description="Token usage details (prompt, completion, total tokens)")
+    backup_path: Optional[str] = Field(None, description="Path to the raw response backup file")
 
 class BulkDeleteRequest(BaseModel):
     run_ids: List[str] = Field(..., description="List of unique LangSmith run IDs to delete")

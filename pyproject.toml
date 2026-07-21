@@ -13,4 +13,5 @@ dependencies = [
     "uvicorn>=0.28.0",
     "pydantic-settings>=2.2.1",
     "sqlalchemy>=2.0.50",
+    "langchain-anthropic>=1.4.8",
 ]

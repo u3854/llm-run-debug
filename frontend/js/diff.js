@@ -297,16 +297,19 @@ function renderMessagesDiff(oldMsgs, newMsgs) {
 }
 
 function renderTextDiff(oldText, newText) {
-    if (oldText === newText) {
-        return `<div class="diff-unchanged">${escapeHtml(oldText)}</div>`;
+    const oldStr = typeof oldText === "string" ? oldText : (oldText ? JSON.stringify(oldText, null, 2) : "");
+    const newStr = typeof newText === "string" ? newText : (newText ? JSON.stringify(newText, null, 2) : "");
+
+    if (oldStr === newStr) {
+        return `<div class="diff-unchanged">${escapeHtml(oldStr)}</div>`;
     }
     
     // Check if jsdiff is loaded
     if (typeof window.Diff === 'undefined') {
-        return `<div style="color:var(--text-muted)">jsdiff library failed to load. Raw content:<br><pre>${escapeHtml(newText)}</pre></div>`;
+        return `<div style="color:var(--text-muted)">jsdiff library failed to load. Raw content:<br><pre>${escapeHtml(newStr)}</pre></div>`;
     }
 
-    const diff = window.Diff.diffWords(oldText || "", newText || "");
+    const diff = window.Diff.diffWords(oldStr, newStr);
     let html = "";
     
     diff.forEach(part => {
@@ -325,6 +328,9 @@ function renderTextDiff(oldText, newText) {
 
 function escapeHtml(text) {
     if (!text) return "";
+    if (typeof text !== "string") {
+        text = JSON.stringify(text, null, 2);
+    }
     return text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")

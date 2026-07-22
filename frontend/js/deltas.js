@@ -315,7 +315,15 @@ export async function openInferDeltaModal() {
         for (let i = 0; i < minLen; i++) {
             const oldMsg = oldMsgs[i];
             const newMsg = newMsgs[i];
-            if (oldMsg.content !== newMsg.content) {
+            
+            let isContentSame = false;
+            if (oldMsg.content === newMsg.content) {
+                isContentSame = true;
+            } else if (typeof oldMsg.content !== "string" || typeof newMsg.content !== "string") {
+                isContentSame = JSON.stringify(oldMsg.content) === JSON.stringify(newMsg.content);
+            }
+
+            if (!isContentSame) {
                 const role = oldMsg.role;
                 const roleIndices = oldMsgs.map((m, idx) => m.role === role ? idx : -1).filter(idx => idx !== -1);
                 const target_index = roleIndices.indexOf(i);
@@ -324,14 +332,16 @@ export async function openInferDeltaModal() {
                 let value = newMsg.content;
                 let desc = `Replace ${role} message [index ${target_index}]`;
                 
-                if (newMsg.content.startsWith(oldMsg.content)) {
-                    operation = "append";
-                    value = newMsg.content.substring(oldMsg.content.length);
-                    desc = `Append to ${role} message [index ${target_index}]: "${value.length > 30 ? value.substring(0, 30) + '...' : value}"`;
-                } else if (newMsg.content.endsWith(oldMsg.content)) {
-                    operation = "prepend";
-                    value = newMsg.content.substring(0, newMsg.content.length - oldMsg.content.length);
-                    desc = `Prepend to ${role} message [index ${target_index}]: "${value.length > 30 ? value.substring(0, 30) + '...' : value}"`;
+                if (typeof oldMsg.content === "string" && typeof newMsg.content === "string") {
+                    if (newMsg.content.startsWith(oldMsg.content)) {
+                        operation = "append";
+                        value = newMsg.content.substring(oldMsg.content.length);
+                        desc = `Append to ${role} message [index ${target_index}]: "${value.length > 30 ? value.substring(0, 30) + '...' : value}"`;
+                    } else if (newMsg.content.endsWith(oldMsg.content)) {
+                        operation = "prepend";
+                        value = newMsg.content.substring(0, newMsg.content.length - oldMsg.content.length);
+                        desc = `Prepend to ${role} message [index ${target_index}]: "${value.length > 30 ? value.substring(0, 30) + '...' : value}"`;
+                    }
                 }
                 
                 candidates.push({
